@@ -8,854 +8,1159 @@
 
 module core_top (
 
-//
-// physical connections
-//
+    //
+    // physical connections
+    //
 
-///////////////////////////////////////////////////
-// clock inputs 74.25mhz. not phase aligned, so treat these domains as asynchronous
+    ///////////////////////////////////////////////////
+    // clock inputs 74.25mhz. not phase aligned, so treat these domains as asynchronous
 
-input   wire            clk_74a, // mainclk1
-input   wire            clk_74b, // mainclk1 
+    input wire clk_74a,  // mainclk1
+    input wire clk_74b,  // mainclk1
+`ifdef __VERILATOR__
+    input wire reset_n,
+    input wire clk_32mhz,
+`endif
+    output wire debug_iec_atn,
+    output wire debug_iec_data,
+    output wire debug_iec_clock,
+    output wire debug_1mhz_ph1_en,
+    output wire debug_1mhz_ph2_en,
 
-///////////////////////////////////////////////////
-// cartridge interface
-// switches between 3.3v and 5v mechanically
-// output enable for multibit translators controlled by pic32
+    output wire debug_c64_cpu_valid,
+    output wire debug_c64_cpu_sync,
+    output wire [15:0] debug_c64_cpu_addr,
+    output wire [7:0] debug_c64_cpu_data,
+    output wire [63:0]debug_c64_cpu_regs,
 
-// GBA AD[15:8]
-inout   wire    [7:0]   cart_tran_bank2,
-output  wire            cart_tran_bank2_dir,
+    output wire debug_c1541_cpu_valid,
+    output wire debug_c1541_cpu_sync,
+    output wire [15:0] debug_c1541_cpu_addr,
+    output wire [7:0] debug_c1541_cpu_data,
+    output wire [63:0]debug_c1541_cpu_regs,
 
-// GBA AD[7:0]
-inout   wire    [7:0]   cart_tran_bank3,
-output  wire            cart_tran_bank3_dir,
+    ///////////////////////////////////////////////////
+    // cartridge interface
+    // switches between 3.3v and 5v mechanically
+    // output enable for multibit translators controlled by pic32
 
-// GBA A[23:16]
-inout   wire    [7:0]   cart_tran_bank1,
-output  wire            cart_tran_bank1_dir,
+    // GBA AD[15:8]
+    inout  wire [7:0] cart_tran_bank2,
+    output wire       cart_tran_bank2_dir,
 
-// GBA [7] PHI#
-// GBA [6] WR#
-// GBA [5] RD#
-// GBA [4] CS1#/CS#
-//     [3:0] unwired
-inout   wire    [7:4]   cart_tran_bank0,
-output  wire            cart_tran_bank0_dir,
+    // GBA AD[7:0]
+    inout  wire [7:0] cart_tran_bank3,
+    output wire       cart_tran_bank3_dir,
 
-// GBA CS2#/RES#
-inout   wire            cart_tran_pin30,
-output  wire            cart_tran_pin30_dir,
-// when GBC cart is inserted, this signal when low or weak will pull GBC /RES low with a special circuit
-// the goal is that when unconfigured, the FPGA weak pullups won't interfere.
-// thus, if GBC cart is inserted, FPGA must drive this high in order to let the level translators
-// and general IO drive this pin.
-output  wire            cart_pin30_pwroff_reset,
+    // GBA A[23:16]
+    inout  wire [7:0] cart_tran_bank1,
+    output wire       cart_tran_bank1_dir,
 
-// GBA IRQ/DRQ
-inout   wire            cart_tran_pin31,
-output  wire            cart_tran_pin31_dir,
+    // GBA [7] PHI#
+    // GBA [6] WR#
+    // GBA [5] RD#
+    // GBA [4] CS1#/CS#
+    //     [3:0] unwired
+    inout  wire [7:4] cart_tran_bank0,
+    output wire       cart_tran_bank0_dir,
 
-// infrared
-input   wire            port_ir_rx,
-output  wire            port_ir_tx,
-output  wire            port_ir_rx_disable, 
+    // GBA CS2#/RES#
+    inout  wire cart_tran_pin30,
+    output wire cart_tran_pin30_dir,
+    // when GBC cart is inserted, this signal when low or weak will pull GBC /RES low with a special circuit
+    // the goal is that when unconfigured, the FPGA weak pullups won't interfere.
+    // thus, if GBC cart is inserted, FPGA must drive this high in order to let the level translators
+    // and general IO drive this pin.
+    output wire cart_pin30_pwroff_reset,
 
-// GBA link port
-inout   wire            port_tran_si,
-output  wire            port_tran_si_dir,
-inout   wire            port_tran_so,
-output  wire            port_tran_so_dir,
-inout   wire            port_tran_sck,
-output  wire            port_tran_sck_dir,
-inout   wire            port_tran_sd,
-output  wire            port_tran_sd_dir,
- 
-///////////////////////////////////////////////////
-// cellular psram 0 and 1, two chips (64mbit x2 dual die per chip)
+    // GBA IRQ/DRQ
+    inout  wire cart_tran_pin31,
+    output wire cart_tran_pin31_dir,
 
-output  wire    [21:16] cram0_a,
-inout   wire    [15:0]  cram0_dq,
-input   wire            cram0_wait,
-output  wire            cram0_clk,
-output  wire            cram0_adv_n,
-output  wire            cram0_cre,
-output  wire            cram0_ce0_n,
-output  wire            cram0_ce1_n,
-output  wire            cram0_oe_n,
-output  wire            cram0_we_n,
-output  wire            cram0_ub_n,
-output  wire            cram0_lb_n,
+    // infrared
+    input  wire port_ir_rx,
+    output wire port_ir_tx,
+    output wire port_ir_rx_disable,
 
-output  wire    [21:16] cram1_a,
-inout   wire    [15:0]  cram1_dq,
-input   wire            cram1_wait,
-output  wire            cram1_clk,
-output  wire            cram1_adv_n,
-output  wire            cram1_cre,
-output  wire            cram1_ce0_n,
-output  wire            cram1_ce1_n,
-output  wire            cram1_oe_n,
-output  wire            cram1_we_n,
-output  wire            cram1_ub_n,
-output  wire            cram1_lb_n,
+    // GBA link port
+    inout  wire port_tran_si,
+    output wire port_tran_si_dir,
+    inout  wire port_tran_so,
+    output wire port_tran_so_dir,
+    inout  wire port_tran_sck,
+    output wire port_tran_sck_dir,
+    inout  wire port_tran_sd,
+    output wire port_tran_sd_dir,
 
-///////////////////////////////////////////////////
-// sdram, 512mbit 16bit
+    ///////////////////////////////////////////////////
+    // cellular psram 0 and 1, two chips (64mbit x2 dual die per chip)
 
-output  wire    [12:0]  dram_a,
-output  wire    [1:0]   dram_ba,
-inout   wire    [15:0]  dram_dq,
-output  wire    [1:0]   dram_dqm,
-output  wire            dram_clk,
-output  wire            dram_cke,
-output  wire            dram_ras_n,
-output  wire            dram_cas_n,
-output  wire            dram_we_n,
+    output wire [21:16] cram0_a,
+    inout  wire [ 15:0] cram0_dq,
+    input  wire         cram0_wait,
+    output wire         cram0_clk,
+    output wire         cram0_adv_n,
+    output wire         cram0_cre,
+    output wire         cram0_ce0_n,
+    output wire         cram0_ce1_n,
+    output wire         cram0_oe_n,
+    output wire         cram0_we_n,
+    output wire         cram0_ub_n,
+    output wire         cram0_lb_n,
 
-///////////////////////////////////////////////////
-// sram, 1mbit 16bit
+    output wire [21:16] cram1_a,
+    inout  wire [ 15:0] cram1_dq,
+    input  wire         cram1_wait,
+    output wire         cram1_clk,
+    output wire         cram1_adv_n,
+    output wire         cram1_cre,
+    output wire         cram1_ce0_n,
+    output wire         cram1_ce1_n,
+    output wire         cram1_oe_n,
+    output wire         cram1_we_n,
+    output wire         cram1_ub_n,
+    output wire         cram1_lb_n,
 
-output  wire    [16:0]  sram_a,
-inout   wire    [15:0]  sram_dq,
-output  wire            sram_oe_n,
-output  wire            sram_we_n,
-output  wire            sram_ub_n,
-output  wire            sram_lb_n,
+    ///////////////////////////////////////////////////
+    // sdram, 512mbit 16bit
 
-///////////////////////////////////////////////////
-// vblank driven by dock for sync in a certain mode
+    output wire [12:0] dram_a,
+    output wire [ 1:0] dram_ba,
+    inout  wire [15:0] dram_dq,
+    output wire [ 1:0] dram_dqm,
+    output wire        dram_clk,
+    output wire        dram_cke,
+    output wire        dram_ras_n,
+    output wire        dram_cas_n,
+    output wire        dram_we_n,
 
-input   wire            vblank,
+    ///////////////////////////////////////////////////
+    // sram, 1mbit 16bit
 
-///////////////////////////////////////////////////
-// i/o to 6515D breakout usb uart
+    output wire [16:0] sram_a,
+    inout  wire [15:0] sram_dq,
+    output wire        sram_oe_n,
+    output wire        sram_we_n,
+    output wire        sram_ub_n,
+    output wire        sram_lb_n,
 
-output  wire            dbg_tx,
-input   wire            dbg_rx,
+    ///////////////////////////////////////////////////
+    // vblank driven by dock for sync in a certain mode
 
-///////////////////////////////////////////////////
-// i/o pads near jtag connector user can solder to
+    input wire vblank,
 
-output  wire            user1,
-input   wire            user2,
+    ///////////////////////////////////////////////////
+    // i/o to 6515D breakout usb uart
 
-///////////////////////////////////////////////////
-// RFU internal i2c bus 
+    output wire dbg_tx,
+    input  wire dbg_rx,
 
-inout   wire            aux_sda,
-output  wire            aux_scl,
+    ///////////////////////////////////////////////////
+    // i/o pads near jtag connector user can solder to
 
-///////////////////////////////////////////////////
-// RFU, do not use
-output  wire            vpll_feed,
+    output wire user1,
+    input  wire user2,
+
+    ///////////////////////////////////////////////////
+    // RFU internal i2c bus
+
+    inout  wire aux_sda,
+    output wire aux_scl,
+
+    ///////////////////////////////////////////////////
+    // RFU, do not use
+    output wire vpll_feed,
 
 
-//
-// logical connections
-//
+    //
+    // logical connections
+    //
 
-///////////////////////////////////////////////////
-// video, audio output to scaler
-output  wire    [23:0]  video_rgb,
-output  wire            video_rgb_clock,
-output  wire            video_rgb_clock_90,
-output  wire            video_de,
-output  wire            video_skip,
-output  wire            video_vs,
-output  wire            video_hs,
-    
-output  wire            audio_mclk,
-input   wire            audio_adc,
-output  wire            audio_dac,
-output  wire            audio_lrck,
+    ///////////////////////////////////////////////////
+    // video, audio output to scaler
+    output wire [23:0] video_rgb,
+    output wire        video_rgb_clock,
+    output wire        video_rgb_clock_90,
+    output wire        video_de,
+    output wire        video_skip,
+    output wire        video_vs,
+    output wire        video_hs,
 
-///////////////////////////////////////////////////
-// bridge bus connection
-// synchronous to clk_74a
-output  wire            bridge_endian_little,
-input   wire    [31:0]  bridge_addr,
-input   wire            bridge_rd,
-output  reg     [31:0]  bridge_rd_data,
-input   wire            bridge_wr,
-input   wire    [31:0]  bridge_wr_data,
+    output wire audio_mclk,
+    input  wire audio_adc,
+    output wire audio_dac,
+    output wire audio_lrck,
 
-///////////////////////////////////////////////////
-// controller data
-// 
-// key bitmap:
-//   [0]    dpad_up
-//   [1]    dpad_down
-//   [2]    dpad_left
-//   [3]    dpad_right
-//   [4]    face_a
-//   [5]    face_b
-//   [6]    face_x
-//   [7]    face_y
-//   [8]    trig_l1
-//   [9]    trig_r1
-//   [10]   trig_l2
-//   [11]   trig_r2
-//   [12]   trig_l3
-//   [13]   trig_r3
-//   [14]   face_select
-//   [15]   face_start
-// joy values - unsigned
-//   [ 7: 0] lstick_x
-//   [15: 8] lstick_y
-//   [23:16] rstick_x
-//   [31:24] rstick_y
-// trigger values - unsigned
-//   [ 7: 0] ltrig
-//   [15: 8] rtrig
-//
-input   wire    [15:0]  cont1_key,
-input   wire    [15:0]  cont2_key,
-input   wire    [15:0]  cont3_key,
-input   wire    [15:0]  cont4_key,
-input   wire    [31:0]  cont1_joy,
-input   wire    [31:0]  cont2_joy,
-input   wire    [31:0]  cont3_joy,
-input   wire    [31:0]  cont4_joy,
-input   wire    [15:0]  cont1_trig,
-input   wire    [15:0]  cont2_trig,
-input   wire    [15:0]  cont3_trig,
-input   wire    [15:0]  cont4_trig
-    
+    ///////////////////////////////////////////////////
+    // bridge bus connection
+    // synchronous to clk_74a
+    output wire        bridge_endian_little,
+    input  wire [31:0] bridge_addr,
+    input  wire        bridge_rd,
+    output reg  [31:0] bridge_rd_data,
+    input  wire        bridge_wr,
+    input  wire [31:0] bridge_wr_data,
+
+    ///////////////////////////////////////////////////
+    // controller data
+    //
+    // key bitmap:
+    //   [0]    dpad_up
+    //   [1]    dpad_down
+    //   [2]    dpad_left
+    //   [3]    dpad_right
+    //   [4]    face_a
+    //   [5]    face_b
+    //   [6]    face_x
+    //   [7]    face_y
+    //   [8]    trig_l1
+    //   [9]    trig_r1
+    //   [10]   trig_l2
+    //   [11]   trig_r2
+    //   [12]   trig_l3
+    //   [13]   trig_r3
+    //   [14]   face_select
+    //   [15]   face_start
+    // joy values - unsigned
+    //   [ 7: 0] lstick_x
+    //   [15: 8] lstick_y
+    //   [23:16] rstick_x
+    //   [31:24] rstick_y
+    // trigger values - unsigned
+    //   [ 7: 0] ltrig
+    //   [15: 8] rtrig
+    //
+    input wire [15:0] cont1_key,
+    input wire [15:0] cont2_key,
+    input wire [15:0] cont3_key,
+    input wire [15:0] cont4_key,
+    input wire [31:0] cont1_joy,
+    input wire [31:0] cont2_joy,
+    input wire [31:0] cont3_joy,
+    input wire [31:0] cont4_joy,
+    input wire [15:0] cont1_trig,
+    input wire [15:0] cont2_trig,
+    input wire [15:0] cont3_trig,
+    input wire [15:0] cont4_trig
+
 );
 
-// not using the IR port, so turn off both the LED, and
-// disable the receive circuit to save power
-assign port_ir_tx = 0;
-assign port_ir_rx_disable = 1;
+  // not using the IR port, so turn off both the LED, and
+  // disable the receive circuit to save power
+  assign port_ir_tx              = 0;
+  assign port_ir_rx_disable      = 1;
 
-// bridge endianness
-assign bridge_endian_little = 0;
+  // bridge endianness
+  assign bridge_endian_little    = 0;
 
-// cart is unused, so set all level translators accordingly
-// directions are 0:IN, 1:OUT
-assign cart_tran_bank3 = 8'hzz;
-assign cart_tran_bank3_dir = 1'b0;
-assign cart_tran_bank2 = 8'hzz;
-assign cart_tran_bank2_dir = 1'b0;
-assign cart_tran_bank1 = 8'hzz;
-assign cart_tran_bank1_dir = 1'b0;
-assign cart_tran_bank0 = 4'hf;
-assign cart_tran_bank0_dir = 1'b1;
-assign cart_tran_pin30 = 1'b0;      // reset or cs2, we let the hw control it by itself
-assign cart_tran_pin30_dir = 1'bz;
-assign cart_pin30_pwroff_reset = 1'b0;  // hardware can control this
-assign cart_tran_pin31 = 1'bz;      // input
-assign cart_tran_pin31_dir = 1'b0;  // input
+  // cart is unused, so set all level translators accordingly
+  // directions are 0:IN, 1:OUT
+  assign cart_tran_bank3         = 8'hzz;
+  assign cart_tran_bank3_dir     = 1'b0;
+  assign cart_tran_bank2         = 8'hzz;
+  assign cart_tran_bank2_dir     = 1'b0;
+  assign cart_tran_bank1         = 8'hzz;
+  assign cart_tran_bank1_dir     = 1'b0;
+  assign cart_tran_bank0         = 4'hf;
+  assign cart_tran_bank0_dir     = 1'b1;
+  assign cart_tran_pin30         = 1'b0;  // reset or cs2, we let the hw control it by itself
+  assign cart_tran_pin30_dir     = 1'bz;
+  assign cart_pin30_pwroff_reset = 1'b0;  // hardware can control this
+  assign cart_tran_pin31         = 1'bz;  // input
+  assign cart_tran_pin31_dir     = 1'b0;  // input
 
-// link port is input only
-assign port_tran_so = 1'bz;
-assign port_tran_so_dir = 1'b0;     // SO is output only
-assign port_tran_si = 1'bz;
-assign port_tran_si_dir = 1'b0;     // SI is input only
-assign port_tran_sck = 1'bz;
-assign port_tran_sck_dir = 1'b0;    // clock direction can change
-assign port_tran_sd = 1'bz;
-assign port_tran_sd_dir = 1'b0;     // SD is input and not used
+  // link port is input only
+  assign port_tran_so            = 1'bz;
+  assign port_tran_so_dir        = 1'b0;  // SO is output only
+  assign port_tran_si            = 1'bz;
+  assign port_tran_si_dir        = 1'b0;  // SI is input only
+  assign port_tran_sck           = 1'bz;
+  assign port_tran_sck_dir       = 1'b0;  // clock direction can change
+  assign port_tran_sd            = 1'bz;
+  assign port_tran_sd_dir        = 1'b0;  // SD is input and not used
 
-// tie off the rest of the pins we are not using
-assign cram0_a = 'h0;
-assign cram0_dq = {16{1'bZ}};
-assign cram0_clk = 0;
-assign cram0_adv_n = 1;
-assign cram0_cre = 0;
-assign cram0_ce0_n = 1;
-assign cram0_ce1_n = 1;
-assign cram0_oe_n = 1;
-assign cram0_we_n = 1;
-assign cram0_ub_n = 1;
-assign cram0_lb_n = 1;
+  // tie off the rest of the pins we are not using
+  assign cram1_a                 = 'h0;
+  assign cram1_dq                = {16{1'bZ}};
+  assign cram1_clk               = 0;
+  assign cram1_adv_n             = 1;
+  assign cram1_cre               = 0;
+  assign cram1_ce0_n             = 1;
+  assign cram1_ce1_n             = 1;
+  assign cram1_oe_n              = 1;
+  assign cram1_we_n              = 1;
+  assign cram1_ub_n              = 1;
+  assign cram1_lb_n              = 1;
 
-assign cram1_a = 'h0;
-assign cram1_dq = {16{1'bZ}};
-assign cram1_clk = 0;
-assign cram1_adv_n = 1;
-assign cram1_cre = 0;
-assign cram1_ce0_n = 1;
-assign cram1_ce1_n = 1;
-assign cram1_oe_n = 1;
-assign cram1_we_n = 1;
-assign cram1_ub_n = 1;
-assign cram1_lb_n = 1;
+  assign dram_a                  = 'h0;
+  assign dram_ba                 = 'h0;
+  assign dram_dq                 = {16{1'bZ}};
+  assign dram_dqm                = 'h0;
+  assign dram_clk                = 'h0;
+  assign dram_cke                = 'h0;
+  assign dram_ras_n              = 'h1;
+  assign dram_cas_n              = 'h1;
+  assign dram_we_n               = 'h1;
 
-assign dram_a = 'h0;
-assign dram_ba = 'h0;
-assign dram_dq = {16{1'bZ}};
-assign dram_dqm = 'h0;
-assign dram_clk = 'h0;
-assign dram_cke = 'h0;
-assign dram_ras_n = 'h1;
-assign dram_cas_n = 'h1;
-assign dram_we_n = 'h1;
+  assign sram_a                  = 'h0;
+  assign sram_dq                 = {16{1'bZ}};
+  assign sram_oe_n               = 1;
+  assign sram_we_n               = 1;
+  assign sram_ub_n               = 1;
+  assign sram_lb_n               = 1;
 
-assign sram_a = 'h0;
-assign sram_dq = {16{1'bZ}};
-assign sram_oe_n  = 1;
-assign sram_we_n  = 1;
-assign sram_ub_n  = 1;
-assign sram_lb_n  = 1;
+  assign dbg_tx                  = 1'bZ;
+  assign user1                   = 1'bZ;
+  assign aux_scl                 = 1'bZ;
+  assign vpll_feed               = 1'bZ;
 
-assign dbg_tx = 1'bZ;
-assign user1 = 1'bZ;
-assign aux_scl = 1'bZ;
-assign vpll_feed = 1'bZ;
-
-
-// synchronizers for data that is launched in a different clock domain.
-// all data read by bridge must be in the clk_74a (BRIDGE) domain.
-	wire	[9:0]	square_x_s;
-	wire	[9:0]	square_y_s;
-	wire	[15:0]	frame_count_s;
-synch_3 #(.WIDTH(10)) s30(square_x, square_x_s, clk_74a);
-synch_3 #(.WIDTH(10)) s31(square_y, square_y_s, clk_74a);
-synch_3 #(.WIDTH(16)) s32(frame_count, frame_count_s, clk_74a);
-
-
-// for bridge write data, we just broadcast it to all bus devices
-// for bridge read data, we have to mux it
-// add your own devices here
-always @(*) begin
-	// note: all bridge read data needs to be synchronized into BRIDGE's clk_74 domain.
-	// you should definitely synchronize going both ways in your application
-	//
-	// because this is a combinatorial block, you should have default cases
-	// or otherwise complete coverage to prevent Quartus from inferring latches
-    casex(bridge_addr)
-	default: begin
-		bridge_rd_data <= 0;
-	end
-	32'h002000xx: begin
-		casex(bridge_addr[7:0])
-		default: bridge_rd_data <= square_x_s;
-		8'h04: bridge_rd_data <= square_y_s;
-		endcase
-	end
-	32'h00F0000C: begin
-		bridge_rd_data <= video_channel_enable;
-	end
-	32'h00100000: begin
-		bridge_rd_data <= video_anim_enable;
-	end
-	32'h00100004: begin
-		bridge_rd_data <= debug_value;
-	end
-	32'h00300000: begin
-		bridge_rd_data <= signed_value;
-	end
-	32'h20000000: begin
-		bridge_rd_data <= frame_count_s;
-	end
-	// for core_bridge_cmd
-    32'hF8xxxxxx: begin
+  always @(*) begin
+    casex (bridge_addr)
+      32'hF80020xx: begin
+        bridge_rd_data <= dataslot_table_rd_data;
+      end
+      default: begin
         bridge_rd_data <= cmd_bridge_rd_data;
-    end
+      end
     endcase
-end
+  end
 
+  //
+  // host/target command handler
+  //
+`ifndef __VERILATOR__
+  wire reset_n;  // driven by host commands, can be used as core-wide reset
+`endif
+  wire [31:0] cmd_bridge_rd_data;
 
-//
-// host/target command handler
-//
-    wire            reset_n;                // driven by host commands, can be used as core-wide reset
-    wire    [31:0]  cmd_bridge_rd_data;
-    
-// bridge host commands
-// synchronous to clk_74a
-    wire            status_boot_done = pll_core_locked; 
-    wire            status_setup_done = pll_core_locked; // rising edge triggers a target command
-    wire            status_running = reset_n; // we are running as soon as reset_n goes high
+  // bridge host commands
+  // synchronous to clk_74a
+  wire        status_boot_done = pll_core_locked;
+  wire        status_setup_done = pll_core_locked;  // rising edge triggers a target command
+  wire        status_running = reset_n;  // we are running as soon as reset_n goes high
 
-    wire            dataslot_requestread;
-    wire    [15:0]  dataslot_requestread_id;
-    wire            dataslot_requestread_ack = 1;
-    wire            dataslot_requestread_ok = 1;
+  wire        osnotify_inmenu;
 
-    wire            dataslot_requestwrite;
-    wire    [15:0]  dataslot_requestwrite_id;
-    wire            dataslot_requestwrite_ack = 1;
-    wire            dataslot_requestwrite_ok = 1;
+  // bridge target commands
+  // synchronous to clk_74a
+  core_bridge_cmd icb (
+      .clk                 (clk_74a),
+`ifndef __VERILATOR__
+      .reset_n             (reset_n),
+`endif
+      .bridge_endian_little(bridge_endian_little),
+      .bridge_addr         (bridge_addr),
+      .bridge_rd           (bridge_rd),
+      .bridge_rd_data      (cmd_bridge_rd_data),
+      .bridge_wr           (bridge_wr),
+      .bridge_wr_data      (bridge_wr_data),
 
-    wire            dataslot_allcomplete;
+      .status_boot_done (status_boot_done),
+      .status_setup_done(status_setup_done),
+      .status_running   (status_running),
 
-    wire            savestate_supported;
-    wire    [31:0]  savestate_addr;
-    wire    [31:0]  savestate_size;
-    wire    [31:0]  savestate_maxloadsize;
+      .osnotify_inmenu(osnotify_inmenu),
 
-    wire            savestate_start;
-    wire            savestate_start_ack;
-    wire            savestate_start_busy;
-    wire            savestate_start_ok;
-    wire            savestate_start_err;
+      .i_cpu_clk(clk_8mhz),
+      .i_cpu_req(cpu_mem_valid && cpu_mem_addr[31:28] == 4'h4),
+      .o_cpu_ack_pulse(bridge_ack_pulse),
 
-    wire            savestate_load;
-    wire            savestate_load_ack;
-    wire            savestate_load_busy;
-    wire            savestate_load_ok;
-    wire            savestate_load_err;
-	
-	wire            osnotify_inmenu;
+      .i_cpu_addr (cpu_mem_addr),
+      .i_cpu_wdata(cpu_mem_wdata),
+      .i_cpu_wstrb(cpu_mem_wstrb),
+      .o_cpu_rdata(bridge_rdata)
+  );
 
-// bridge target commands
-// synchronous to clk_74a
+  //
+  // Generate clk_8mhz_1mhz_ph1_en and clk_8mhz_1mhz_ph2_en clock enable pulses
+  //
 
+  reg [2:0] clk_8mhz_cntr;
+  always @(posedge clk_8mhz) begin
+    if (rst) clk_8mhz_cntr <= 0;
+    else clk_8mhz_cntr <= clk_8mhz_cntr + 1;
+  end
+  wire clk_8mhz_1mhz_ph1_en;
+  wire clk_8mhz_1mhz_ph2_en;
+  assign clk_8mhz_1mhz_ph1_en = (clk_8mhz_cntr == 3'b000);
+  assign clk_8mhz_1mhz_ph2_en = (clk_8mhz_cntr == 3'b100);
 
-// bridge data slot access
+  // Synchronize reset used by C64 and C1541 so that first phase seen after
+  // reset is ph1
+  reg ph_synced_rst;
+  always @(posedge clk_8mhz) begin
+    if (rst) ph_synced_rst <= 1;
+    else if (clk_8mhz_1mhz_ph2_en) ph_synced_rst <= ~c64_ctrl[0];
+  end
 
-    wire    [9:0]   datatable_addr;
-    wire            datatable_wren;
-    wire    [31:0]  datatable_data;
-    wire    [31:0]  datatable_q;
+  //
+  // audio i2s silence generator
+  // see other examples for actual audio generation
+  //
 
-core_bridge_cmd icb (
+  assign audio_mclk = audgen_mclk;
+  assign audio_dac  = audgen_dac;
+  assign audio_lrck = audgen_lrck;
 
-    .clk                ( clk_74a ),
-    .reset_n            ( reset_n ),
-
-    .bridge_endian_little   ( bridge_endian_little ),
-    .bridge_addr            ( bridge_addr ),
-    .bridge_rd              ( bridge_rd ),
-    .bridge_rd_data         ( cmd_bridge_rd_data ),
-    .bridge_wr              ( bridge_wr ),
-    .bridge_wr_data         ( bridge_wr_data ),
-    
-    .status_boot_done       ( status_boot_done ),
-    .status_setup_done      ( status_setup_done ),
-    .status_running         ( status_running ),
-
-    .dataslot_requestread       ( dataslot_requestread ),
-    .dataslot_requestread_id    ( dataslot_requestread_id ),
-    .dataslot_requestread_ack   ( dataslot_requestread_ack ),
-    .dataslot_requestread_ok    ( dataslot_requestread_ok ),
-
-    .dataslot_requestwrite      ( dataslot_requestwrite ),
-    .dataslot_requestwrite_id   ( dataslot_requestwrite_id ),
-    .dataslot_requestwrite_ack  ( dataslot_requestwrite_ack ),
-    .dataslot_requestwrite_ok   ( dataslot_requestwrite_ok ),
-
-    .dataslot_allcomplete   ( dataslot_allcomplete ),
-
-    .savestate_supported    ( savestate_supported ),
-    .savestate_addr         ( savestate_addr ),
-    .savestate_size         ( savestate_size ),
-    .savestate_maxloadsize  ( savestate_maxloadsize ),
-
-    .savestate_start        ( savestate_start ),
-    .savestate_start_ack    ( savestate_start_ack ),
-    .savestate_start_busy   ( savestate_start_busy ),
-    .savestate_start_ok     ( savestate_start_ok ),
-    .savestate_start_err    ( savestate_start_err ),
-
-    .savestate_load         ( savestate_load ),
-    .savestate_load_ack     ( savestate_load_ack ),
-    .savestate_load_busy    ( savestate_load_busy ),
-    .savestate_load_ok      ( savestate_load_ok ),
-    .savestate_load_err     ( savestate_load_err ),
-
-	.osnotify_inmenu        ( osnotify_inmenu ),
-
-    .datatable_addr         ( datatable_addr ),
-    .datatable_wren         ( datatable_wren ),
-    .datatable_data         ( datatable_data ),
-    .datatable_q            ( datatable_q ),
-
-);
-
-
-	reg	[2:0]	video_channel_enable = 3'b111;
-	reg			video_anim_enable = 1;
-	reg			video_resetsquare;
-	reg			video_resetframe;
-	reg			video_incrframe;
-	
-	reg			video_squareposx;
-	reg			video_squareposy;
-	reg	[9:0]	video_square_newx;
-	reg	[9:0]	video_square_newy;
-	
-	reg	[31:0]	signed_value;
-	
-	reg	[31:0]	debug_value = 32'h12005678;
-
-always @(posedge clk_74a) begin
-
-	if(bridge_wr) begin
-	  casex(bridge_addr)
-		32'h002000xx: begin
-			
-			casex(bridge_addr[7:0])
-			8'h00: begin
-				video_square_newx <= bridge_wr_data;
-				video_squareposx <= ~video_squareposx;
-			end
-			8'h04: begin
-				video_square_newy <= bridge_wr_data;
-				video_squareposy <= ~video_squareposy;
-			end
-			endcase
-		end
-		32'h00F0000C: begin
-			video_channel_enable <= bridge_wr_data[2:0];
-		end
-		32'h00100000: begin
-			video_anim_enable <= bridge_wr_data[0];
-		end
-		32'h00100004: begin
-			debug_value <= bridge_wr_data;
-		end
-		32'h00300000: begin
-			signed_value <= bridge_wr_data;
-		end
-		32'h00F00010: begin
-			// toggle. the other clock domain will synchronize this and detect an edge
-			video_resetsquare <= ~video_resetsquare;
-		end
-		32'h00F00014: begin
-			// toggle. the other clock domain will synchronize this and detect an edge
-			video_resetframe <= ~video_resetframe;
-		end
-		32'h00F00018: begin
-			// toggle. the other clock domain will synchronize this and detect an edge
-			video_incrframe <= ~video_incrframe;
-		end
-		endcase
-	
-	
-	end
-
-end
-
-////////////////////////////////////////////////////////////////////////////////////////
-//
-// sychronizers for getting stuff from clk_74 (BRIDGE and others) into the video pixel
-// clock domain (clk_core_12288/video_rgb_clock)
-//
-// this is very necessary and should not be neglected!
-//
-	wire	[2:0]	video_channel_enable_s;
-	wire			video_anim_enable_s;
-	wire			video_resetsquare_s;
-	reg				video_resetsquare_last;
-	wire			video_resetframe_s;
-	reg				video_resetframe_last;
-	wire			video_incrframe_s;
-	reg				video_incrframe_last;
-	wire			video_squareposx_s;
-	reg				video_squareposx_last;
-	wire			video_squareposy_s;
-	reg				video_squareposy_last;
-	wire	[9:0]	video_square_newx_s;
-	wire	[9:0]	video_square_newy_s;
-	reg				video_squareposx_nextcycle;
-	reg				video_squareposy_nextcycle;
-	
-synch_3 #(.WIDTH(3)) s1(video_channel_enable, video_channel_enable_s, video_rgb_clock);
-synch_3 			 s2(video_anim_enable, video_anim_enable_s, video_rgb_clock);
-synch_3 			 s3(video_resetsquare, video_resetsquare_s, video_rgb_clock);
-synch_3 			 s4(video_resetframe, video_resetframe_s, video_rgb_clock);
-synch_3 			 s5(video_incrframe, video_incrframe_s, video_rgb_clock);
-
-synch_3 			 s6(video_squareposx, video_squareposx_s, video_rgb_clock);
-synch_3 			 s7(video_squareposy, video_squareposy_s, video_rgb_clock);
-synch_3 #(.WIDTH(10)) s8(video_square_newx, video_square_newx_s, video_rgb_clock);
-synch_3 #(.WIDTH(10)) s9(video_square_newy, video_square_newy_s, video_rgb_clock);
-
-
-
-// video generation
-// ~12,288,000 hz pixel clock
-//
-// we want our video mode of 320x240 @ 60hz, this results in 204800 clocks per frame
-// we need to add hblank and vblank times to this, so there will be a nondisplay area. 
-// it can be thought of as a border around the visible area.
-// to make numbers simple, we can have 400 total clocks per line, and 320 visible.
-// dividing 204800 by 400 results in 512 total lines per frame, and 240 visible.
-// this pixel clock is fairly high for the relatively low resolution, but that's fine.
-// PLL output has a minimum output frequency anyway.
-
-
-assign video_rgb_clock = clk_core_12288;
-assign video_rgb_clock_90 = clk_core_12288_90deg;
-assign video_rgb = vidout_rgb;
-assign video_de = vidout_de;
-assign video_skip = vidout_skip;
-assign video_vs = vidout_vs;
-assign video_hs = vidout_hs;
-
-
-// horizontal back porch: 10
-// horizontal active: 320
-// horizontal front porch: 70
-
-// vertical back porch: 10
-// vertical active: 240
-// vertical front porch: 262
-
-	localparam	VID_V_BPORCH = 'd10;
-	localparam	VID_V_ACTIVE = 'd288;
-	localparam	VID_V_TOTAL = 'd512;
-	localparam	VID_H_BPORCH = 'd10;
-	localparam	VID_H_ACTIVE = 'd320;
-	localparam	VID_H_TOTAL = 'd400;
-	
-	reg	[15:0]	frame_count;
-	
-	reg	[9:0]	x_count;
-	reg	[9:0]	y_count;
-	
-	wire [9:0]	visible_x = x_count - VID_H_BPORCH;
-	wire [9:0]	visible_y = y_count - VID_V_BPORCH;
-
-	reg	[23:0]	vidout_rgb;
-	reg			vidout_de, vidout_de_1;
-	reg			vidout_skip;
-	reg			vidout_vs;
-	reg			vidout_hs, vidout_hs_1;
-	
-	localparam	INIT_X = VID_H_ACTIVE / 2 - (50) / 2;
-	localparam	INIT_Y = VID_V_ACTIVE / 2 - (50) / 2;
-	
-	reg	[9:0]	square_x = INIT_X;
-	reg	[9:0]	square_y = INIT_Y;
-
-always @(posedge video_rgb_clock or negedge reset_n) begin
-
-	if(~reset_n) begin
-		x_count <= 0;
-		y_count <= 0;
-		
-	end else begin
-		
-		vidout_de <= 0;
-		vidout_skip <= 0;
-		vidout_vs <= 0;
-		vidout_hs <= 0;
-		
-		vidout_hs_1 <= vidout_hs;
-		vidout_de_1 <= vidout_de;
-		
-		video_resetsquare_last <= video_resetsquare_s;
-		video_resetframe_last <= video_resetframe_s;
-		video_incrframe_last <= video_incrframe_s;
-		video_squareposx_last <= video_squareposx_s;
-		video_squareposy_last <= video_squareposy_s;
-		
-		// x and y counters
-		x_count <= x_count + 1'b1;
-		if(x_count == VID_H_TOTAL-1) begin
-			x_count <= 0;
-			
-			y_count <= y_count + 1'b1;
-			if(y_count == VID_V_TOTAL-1) begin
-				y_count <= 0;
-			end
-		end
-		
-		// generate sync 
-		if(x_count == 0 && y_count == 0) begin
-			// sync signal in back porch
-			// new frame
-			vidout_vs <= 1;
-			
-			if(video_anim_enable_s) begin
-				frame_count <= frame_count + 1'b1;
-			end
-		end
-		
-		// we want HS to occur a bit after VS, not on the same cycle
-		if(x_count == 3) begin
-			// sync signal in back porch
-			// new line
-			vidout_hs <= 1;
-		end
-
-		// inactive screen areas are black
-		vidout_rgb <= 24'h0;
-		// generate active video
-		if(x_count >= VID_H_BPORCH && x_count < VID_H_ACTIVE+VID_H_BPORCH) begin
-
-			if(y_count >= VID_V_BPORCH && y_count < VID_V_ACTIVE+VID_V_BPORCH) begin
-				// data enable. this is the active region of the line
-				vidout_de <= 1;
-				
-				// generate the sliding XOR background
-				vidout_rgb[23:16] <= (visible_x + frame_count / 1) ^ (visible_y + frame_count/1);
-				vidout_rgb[15:8]  <= (visible_x + frame_count / 2) ^ (visible_y - frame_count/2);
-				vidout_rgb[7:0]	  <= (visible_x - frame_count / 1) ^ (visible_y + 128);
-				
-				// blank out background channels if they are masked
-				if(~video_channel_enable_s[2]) vidout_rgb[23:16] <= 0;
-				if(~video_channel_enable_s[1]) vidout_rgb[15:8] <= 0;
-				if(~video_channel_enable_s[0]) vidout_rgb[7:0] <= 0;
-				
-				// add colored borders for debugging
-				if(visible_x == 0) begin
-					vidout_rgb <= 24'hFFFFFF;
-				end else if(visible_x == VID_H_ACTIVE-1) begin
-					vidout_rgb <= 24'h00FF00;
-				end else if(visible_y == 0) begin
-					vidout_rgb <= 24'hFF0000;
-				end else if(visible_y == VID_V_ACTIVE-1) begin
-					vidout_rgb <= 24'h0000FF;
-				end
-				
-				// generate square
-				if(visible_x >= square_x && visible_x < square_x+50) begin
-					if(visible_y >= square_y && visible_y < square_y+50) begin
-						vidout_rgb <= 24'h0; 
-					end
-				end
-				if(visible_x >= square_x+1 && visible_x < square_x+50-1) begin
-					if(visible_y >= square_y+1 && visible_y < square_y+50-1) begin
-						// change color of the square based on button state.
-						// note: because the button state could change in the middle of the frame,
-						// tearing on the square color could occur, but this is normal.
-						if(cont1_key[4])	
-							vidout_rgb <= 24'hFF00FF; 
-						else if(cont1_key[5])	
-							vidout_rgb <= 24'h00FF00; 
-						else 
-							vidout_rgb <= 24'hFFFFFF; 
-					end
-				end
-				
-			end 
-		end
-		
-		if(vidout_vs) begin
-			// vertical sync, new frame pulse (actually occurred on the previous cycle)
-			// this will actually cause tearing but only on the upperleft-most pixel
-			
-			if(cont1_key[0]) begin
-				// d-pad up
-				if(square_y > 0) square_y <= square_y - 'd1;
-			end
-			if(cont1_key[1]) begin
-				// d-pad down
-				if(square_y < VID_V_ACTIVE-50) square_y <= square_y + 'd1;
-			end
-			if(cont1_key[2]) begin
-				// d-pad left
-				if(square_x > 0) square_x <= square_x - 'd1;
-			end
-			if(cont1_key[3]) begin
-				// d-pad right
-				if(square_x < VID_H_ACTIVE-50) square_x <= square_x + 'd1;
-			end
-		end
-		
-		// detect any edge coming from the synchronized square reset signal
-		if(video_resetsquare_last != video_resetsquare_s) begin
-			square_x <= INIT_X;
-			square_y <= INIT_Y;
-		end
-		
-		// detect any edge coming from the synchronized frame reset signal
-		if(video_resetframe_last != video_resetframe_s) begin
-			frame_count <= 0;
-		end
-		
-		// detect any edge coming from the synchronized frame reset signal
-		if(video_incrframe_last != video_incrframe_s) begin
-			frame_count <= frame_count + 1'b1;
-		end
-		
-		// detect any edge coming from the synchronized frame reset signal
-		// then generate a delay signal
-		if(video_squareposx_last != video_squareposx_s) begin
-			video_squareposx_nextcycle <= 1;
-		end else begin
-			video_squareposx_nextcycle <= 0;
-		end
-		if(video_squareposy_last != video_squareposy_s) begin
-			video_squareposy_nextcycle <= 1;
-		end else begin
-			video_squareposy_nextcycle <= 0;
-		end
-		// load the new square coordinates, but 1 cycle delayed so the 10-bit wide data
-		// has settled
-		if(video_squareposx_nextcycle) begin
-			square_x <= video_square_newx_s;
-		end
-		if(video_squareposy_nextcycle) begin
-			square_y <= video_square_newy_s;
-		end
-	end
-end
-
-
-
-
-//
-// audio i2s silence generator
-// see other examples for actual audio generation
-//
-
-assign audio_mclk = audgen_mclk;
-assign audio_dac = audgen_dac;
-assign audio_lrck = audgen_lrck;
-
-// generate MCLK = 12.288mhz with fractional accumulator
-    reg         [21:0]  audgen_accum = 0;
-    reg                 audgen_mclk;
-    parameter   [20:0]  CYCLE_48KHZ = 21'd122880 * 2;
-always @(posedge clk_74a) begin
+  // generate MCLK = 12.288mhz with fractional accumulator
+  reg [21:0] audgen_accum = 0;
+  reg        audgen_mclk;
+  parameter [20:0] CYCLE_48KHZ = 21'd122880 * 2;
+  always @(posedge clk_74a) begin
     audgen_accum <= audgen_accum + CYCLE_48KHZ;
-    if(audgen_accum >= 21'd742500) begin
-        audgen_mclk <= ~audgen_mclk;
-        audgen_accum <= audgen_accum - 21'd742500 + CYCLE_48KHZ;
+    if (audgen_accum >= 21'd742500) begin
+      audgen_mclk  <= ~audgen_mclk;
+      audgen_accum <= audgen_accum - 21'd742500 + CYCLE_48KHZ;
     end
-end
+  end
 
-// generate SCLK = 3.072mhz by dividing MCLK by 4
-    reg [1:0]   aud_mclk_divider;
-    wire        audgen_sclk = aud_mclk_divider[1] /* synthesis keep*/;
-    reg         audgen_lrck_1;
-always @(posedge audgen_mclk) begin
+  // generate SCLK = 3.072mhz by dividing MCLK by 4
+  reg  [1:0] aud_mclk_divider;
+  wire       audgen_sclk = aud_mclk_divider[1]  /* synthesis keep*/;
+  reg        audgen_lrck_1;
+  always @(posedge audgen_mclk) begin
     aud_mclk_divider <= aud_mclk_divider + 1'b1;
-end
+  end
 
-// shift out audio data as I2S 
-// 32 total bits per channel, but only 16 active bits at the start and then 16 dummy bits
-//
-    reg     [4:0]   audgen_lrck_cnt;    
-    reg             audgen_lrck;
-    reg             audgen_dac;
-always @(negedge audgen_sclk) begin
-    audgen_dac <= 1'b0;
+  // shift out audio data as I2S
+  // 32 total bits per channel, but only 16 active bits at the start and then 16 dummy bits
+  //
+  reg [ 4:0] audgen_lrck_cnt;
+  reg        audgen_lrck;
+  reg        audgen_dac;
+  reg [31:0] audgen_shift;
+  always @(negedge audgen_sclk) begin
+    audgen_dac <= audgen_shift[31];
+    audgen_shift <= {audgen_shift[30:0], 1'b0};
     // 48khz * 64
     audgen_lrck_cnt <= audgen_lrck_cnt + 1'b1;
-    if(audgen_lrck_cnt == 31) begin
-        // switch channels
-        audgen_lrck <= ~audgen_lrck;
-        
-    end 
-end
+    if (audgen_lrck_cnt == 31) begin
+      // switch channels
+      audgen_lrck  <= ~audgen_lrck;
+      audgen_shift <= {sid_wave, 16'h0};  // XXX: sid_wave coming from different clock domain!
+    end
+  end
 
 
-///////////////////////////////////////////////
+  ///////////////////////////////////////////////
 
 
-    wire    clk_core_12288;
-    wire    clk_core_12288_90deg;
-    
-    wire    pll_core_locked;
-    
-mf_pllbase mp1 (
-    .refclk         ( clk_74a ),
-    .rst            ( 0 ),
-    
-    .outclk_0       ( clk_core_12288 ),
-    .outclk_1       ( clk_core_12288_90deg ),
-    
-    .locked         ( pll_core_locked )
-);
+  wire clk_8mhz;
+  wire clk_8mhz_90deg;
+  wire pll_core_locked;
+
+`ifndef __VERILATOR__
+  wire clk_32mhz;
+  mf_pllbase mp1 (
+      .refclk(clk_74a),
+      .rst   (0),
+
+      .outclk_0(clk_8mhz),
+      .outclk_1(clk_8mhz_90deg),
+      .outclk_2(clk_32mhz),
+
+      .locked(pll_core_locked)
+  );
+`else
+  assign clk_8mhz = clk_74a;
+  assign clk_8mhz_90deg = clk_74a;
+  assign pll_core_locked = 1;
+`endif
+
+  // XXX: This is not the right way to do clock domain crossing (don't put
+  // syncs on the bus signals)!
+  wire [15:0] cont1_key_s;
+  wire [15:0] cont2_key_s;
+  wire [15:0] cont3_key_s;
+  wire [15:0] cont4_key_s;
+  wire [31:0] cont1_joy_s;
+  wire [31:0] cont2_joy_s;
+  wire [31:0] cont3_joy_s;
+  wire [31:0] cont4_joy_s;
+  wire [15:0] cont1_trig_s;
+  wire [15:0] cont2_trig_s;
+  wire [15:0] cont3_trig_s;
+  wire [15:0] cont4_trig_s;
+  synch_3 #(.WIDTH(32)) s_cont1_key (cont1_key, cont1_key_s, clk_8mhz);
+  synch_3 #(.WIDTH(32)) s_cont2_key (cont2_key, cont2_key_s, clk_8mhz);
+  synch_3 #(.WIDTH(32)) s_cont3_key (cont3_key, cont3_key_s, clk_8mhz);
+  synch_3 #(.WIDTH(32)) s_cont4_key (cont4_key, cont4_key_s, clk_8mhz);
+  synch_3 #(.WIDTH(32)) s_cont1_joy (cont1_joy, cont1_joy_s, clk_8mhz);
+  synch_3 #(.WIDTH(32)) s_cont2_joy (cont2_joy, cont2_joy_s, clk_8mhz);
+  synch_3 #(.WIDTH(32)) s_cont3_joy (cont3_joy, cont3_joy_s, clk_8mhz);
+  synch_3 #(.WIDTH(32)) s_cont4_joy (cont4_joy, cont4_joy_s, clk_8mhz);
+  synch_3 #(.WIDTH(16)) s_cont1_trig (cont1_trig, cont1_trig_s, clk_8mhz);
+  synch_3 #(.WIDTH(16)) s_cont2_trig (cont2_trig, cont2_trig_s, clk_8mhz);
+  synch_3 #(.WIDTH(16)) s_cont3_trig (cont3_trig, cont3_trig_s, clk_8mhz);
+  synch_3 #(.WIDTH(16)) s_cont4_trig (cont4_trig, cont4_trig_s, clk_8mhz);
+
+  wire [23:0] c64_color_rgb;
+  wire [15:0] sid_wave;
+
+  reg [6:0] joystick1;
+
+  always @* begin
+    case (c64_ctrl[2:1])
+      2'b01: begin
+        joystick1 = cont1_key_s[6:0];
+      end
+      2'b10: begin
+        joystick1 = cont2_key_s[6:0];
+      end
+      default: begin
+        joystick1 = 0;
+      end
+    endcase
+  end
+
+  reg [6:0] joystick2;
+
+  always @* begin
+    case (c64_ctrl[4:3])
+      2'b01: begin
+        joystick2 = cont1_key_s[6:0];
+      end
+      2'b10: begin
+        joystick2 = cont2_key_s[6:0];
+      end
+      default: begin
+        joystick2 = 0;
+      end
+    endcase
+  end
+
+  // IEC
+  wire iec_atn;
+  wire iec_data;
+  wire iec_clock;
+  wire iec_c64_data_out;
+  wire iec_c64_clock_out;
+  wire iec_1541_data_out;
+  wire iec_1541_clock_out;
+
+  // Any device can pull clock or data low
+  assign iec_data = iec_c64_data_out & iec_1541_data_out;
+  assign iec_clock = iec_c64_clock_out & iec_1541_clock_out;
+
+  assign debug_iec_atn = iec_atn;
+  assign debug_iec_data = iec_data;
+  assign debug_iec_clock = iec_clock;
+  assign debug_1mhz_ph1_en = clk_8mhz_1mhz_ph1_en;
+  assign debug_1mhz_ph2_en = clk_8mhz_1mhz_ph2_en;
+
+  myc64_top u_myc64 (
+      .rst(ph_synced_rst),
+      .clk(clk_8mhz),
+      .i_clk_1mhz_ph1_en(clk_8mhz_1mhz_ph1_en),
+      .i_clk_1mhz_ph2_en(clk_8mhz_1mhz_ph2_en),
+      .o_vid_rgb(c64_color_rgb),
+      .o_vid_hsync(video_hs),
+      .o_vid_vsync(video_vs),
+      .o_vid_en(video_de),
+      .o_wave(sid_wave),
+      .i_keyboard_mask(keyboard_mask),
+      .i_joystick1(joystick1),
+      .i_joystick2(joystick2),
+      .o_bus_addr(c64_bus_addr),
+      .i_rom_basic_data(c64_rom_basic_data),
+      .i_rom_char_data(c64_rom_char_data),
+      .i_rom_kernal_data(c64_rom_kernal_data),
+      .i_ram_main_data(c64_ram_rdata),
+      .o_ram_main_data(c64_ram_wdata),
+      .o_ram_main_we(c64_ram_we),
+      .o_iec_atn_out(iec_atn),
+      .i_iec_data_in(iec_data),
+      .o_iec_data_out(iec_c64_data_out),
+      .i_iec_clock_in(iec_clock),
+      .o_iec_clock_out(iec_c64_clock_out),
+      .i_cart_type(c64_ctrl[6:5]),
+      .o_cart_addr(c64_cart_addr),
+      .o_cart_we(c64_cart_we),
+      .i_cart_data(c64_cart_idata),
+      .o_cart_data(c64_cart_odata),
+      // Debug signals
+      .o_debug_6510_valid(debug_c64_cpu_valid),
+      .o_debug_6510_sync(debug_c64_cpu_sync),
+      .o_debug_6510_addr(debug_c64_cpu_addr),
+      .o_debug_6510_data(debug_c64_cpu_data),
+      .o_debug_6510_regs(debug_c64_cpu_regs)
+  );
+
+  wire [15:0] c1541_bus_addr;
+  wire [7:0] c1541_ram_rdata;
+  wire [7:0] c1541_ram_wdata;
+  wire [7:0] c1541_rom_data;
+  wire c1541_ram_we;
+
+  wire [10:0] c1541_track_mem_addr;
+  wire [31:0] c1541_track_mem_data;
+  wire [6:0] c1541_track_no;
+  wire c1541_led_on;
+  wire c1541_motor_on;
+
+  my1541_top u_my1541 (
+      .rst(ph_synced_rst),
+      .clk(clk_8mhz),
+      .i_clk_1mhz_ph1_en(clk_8mhz_1mhz_ph1_en),
+      .i_clk_1mhz_ph2_en(clk_8mhz_1mhz_ph2_en),
+      .o_addr(c1541_bus_addr),
+      .i_ram_data(c1541_ram_rdata),
+      .o_ram_data(c1541_ram_wdata),
+      .o_ram_we(c1541_ram_we),
+      .i_rom_data(c1541_rom_data),
+      .o_track_addr(c1541_track_mem_addr),
+      .i_track_data(c1541_track_mem_data),
+      .i_track_len(c1541_track_len),
+      .o_track_no(c1541_track_no),
+      .o_led_on(c1541_led_on),
+      .o_motor_on(c1541_motor_on),
+      .i_iec_atn_in(iec_atn),
+      .i_iec_data_in(iec_data),
+      .o_iec_data_out(iec_1541_data_out),
+      .i_iec_clock_in(iec_clock),
+      .o_iec_clock_out(iec_1541_clock_out),
+      // Debug signals
+      .o_debug_6502_valid(debug_c1541_cpu_valid),
+      .o_debug_6502_sync(debug_c1541_cpu_sync),
+      .o_debug_6502_addr(debug_c1541_cpu_addr),
+      .o_debug_6502_data(debug_c1541_cpu_data),
+      .o_debug_6502_regs(debug_c1541_cpu_regs)
+  );
+
+  wire [15:0] c64_bus_addr;
+  wire [7:0] c64_ram_rdata;
+  wire [7:0] c64_ram_wdata;
+  wire c64_ram_we;
+
+  reg ext_ram_we_r;
+  wire ext_ram_ready;
+
+  assign ext_ram_ready = ext_ram_we_r & clk_8mhz_1mhz_ph1_en;
+
+  // For better or worse the memory signals need to be stable for an entire ph2
+  // cycle.
+  always @(posedge clk_8mhz) begin
+    if (clk_8mhz_1mhz_ph2_en) begin
+      ext_ram_we_r <= ext_ram_we;
+    end
+    else if (clk_8mhz_1mhz_ph1_en) begin
+      ext_ram_we_r <= 0;
+    end
+  end
 
 
-    
+  //
+  // Memories for MyC64
+  //
+  spram #(
+      .aw(16),
+      .dw(8)
+  ) u_c64_main_ram (
+      .clk (clk_8mhz),
+      .rst (rst),
+      .ce  (1'b1),
+      .oe  (1'b1),
+      .addr(ext_ram_we_r ? ext_addr : c64_bus_addr),
+      .do  (c64_ram_rdata),
+      .di  (ext_ram_we_r ? ext_data : c64_ram_wdata),
+      .we  (ext_ram_we_r | c64_ram_we)
+  );
+
+  wire [7:0] c64_rom_char_data;
+  spram #(
+      .aw(12),
+      .dw(8)
+  ) u_c64_char_rom (
+      .clk (clk_8mhz),
+      .rst (rst),
+      .ce  (1'b1),
+      .oe  (1'b1),
+      .addr(ext_rom_char_we ? ext_addr : c64_bus_addr),
+      .do  (c64_rom_char_data),
+      .di  (ext_data),
+      .we  (ext_rom_char_we)
+  );
+
+  wire [7:0] c64_rom_basic_data;
+  spram #(
+      .aw(13),
+      .dw(8)
+  ) u_c64_basic_rom (
+      .clk (clk_8mhz),
+      .rst (rst),
+      .ce  (1'b1),
+      .oe  (1'b1),
+      .addr(ext_rom_basic_we ? ext_addr : c64_bus_addr),
+      .do  (c64_rom_basic_data),
+      .di  (ext_data),
+      .we  (ext_rom_basic_we)
+  );
+
+  wire [7:0] c64_rom_kernal_data;
+  spram #(
+      .aw(13),
+      .dw(8)
+  ) u_c64_kernal_rom (
+      .clk (clk_8mhz),
+      .rst (rst),
+      .ce  (1'b1),
+      .oe  (1'b1),
+      .addr(ext_rom_kernal_we ? ext_addr : c64_bus_addr),
+      .do  (c64_rom_kernal_data),
+      .di  (ext_data),
+      .we  (ext_rom_kernal_we)
+  );
+
+  wire [20:0] c64_cart_addr;
+  wire [7:0] c64_cart_idata;
+  wire [7:0] c64_cart_odata;
+  wire c64_cart_we;
+`ifdef __VERILATOR__XXX
+  spram #(
+      .aw(21),
+      .dw(8)
+  ) u_c64_cart_rom_lo (
+      .clk (clk_8mhz),
+      .rst (rst),
+      .ce  (1'b1),
+      .oe  (1'b1),
+      .addr(ext_rom_cart_we ? ext_addr : c64_cart_addr),
+      .do  (c64_cart_idata),
+      .di  (ext_rom_cart_we ? ext_data : c64_cart_odata),
+      .we  (ext_rom_cart_we | c64_cart_we)
+  );
+
+`else
+
+  // Generate a clock enable signal in the 32MHz domain that is aligned with
+  // the corresponding clk_8mhz_1mhz_ph[12]_en signals in the 8MHz domain.
+  reg [3:0] clk_32mhz_cntr;
+  wire clk_32mhz_1mhz_ph12_en;
+  assign clk_32mhz_1mhz_ph12_en = clk_32mhz_cntr[3:0] == 0;
+  always @(posedge clk_32mhz) begin
+    if (rst) clk_32mhz_cntr <= 10; // XXX: This is a bit arbitrary but BAD: 13,0,15 GOOD: 10
+    else clk_32mhz_cntr <= clk_32mhz_cntr + 1;
+  end
+
+  // Then use it to synchronize transactions of the PSRAM controller to the two
+  // phases of the C64 core. Since clk_8mhz and clk_32mhz are 'related
+  // clocks' the tools should take care of the rest (I hope).
+  wire psram_wen;
+  assign psram_wen = clk_32mhz_1mhz_ph12_en & (ext_rom_cart_we | c64_cart_we);
+  wire psram_ren;
+  assign psram_ren = clk_32mhz_1mhz_ph12_en & ~(ext_rom_cart_we | c64_cart_we);
+
+  psram #(
+    .CLOCK_SPEED(32)
+  ) u_psram (
+    .clk(clk_32mhz),
+    .bank_sel(1'b0),
+    .addr(ext_rom_cart_we ? ext_addr : c64_cart_addr),
+    .write_en(psram_wen),
+    .data_in(ext_rom_cart_we ? ext_data : c64_cart_odata),
+    .write_high_byte(1'b0),
+    .write_low_byte(1'b1),
+
+    .read_en(psram_ren),
+    .read_avail(),
+    .data_out(c64_cart_idata),
+
+    .busy(),
+
+    // PSRAM signals
+    .cram_a(cram0_a),
+    .cram_dq(cram0_dq),
+    .cram_wait(cram0_wait),
+    .cram_clk(cram0_clk),
+    .cram_adv_n(cram0_adv_n),
+    .cram_cre(cram0_cre),
+    .cram_ce0_n(cram0_ce0_n),
+    .cram_ce1_n(cram0_ce1_n),
+    .cram_oe_n(cram0_oe_n),
+    .cram_we_n(cram0_we_n),
+    .cram_ub_n(cram0_ub_n),
+    .cram_lb_n(cram0_lb_n)
+  );
+
+`endif
+
+  //
+  // Memories for My1541
+  //
+  spram #(
+      .aw(11),
+      .dw(8)
+  ) u_c1541_ram (
+      .clk (clk_8mhz),
+      .rst (rst),
+      .ce  (1'b1),
+      .oe  (1'b1),
+      .addr(c1541_bus_addr),
+      .do  (c1541_ram_rdata),
+      .di  (c1541_ram_wdata),
+      .we  (c1541_ram_we)
+  );
+
+  spram #(
+      .aw(14),
+      .dw(8)
+  ) u_c1541_rom (
+      .clk (clk_8mhz),
+      .rst (rst),
+      .ce  (1'b1),
+      .oe  (1'b1),
+      .addr(ext_rom_1541_we ? ext_addr : c1541_bus_addr),
+      .do  (c1541_rom_data),
+      .di  (ext_data),
+      .we  (ext_rom_1541_we)
+  );
+
+  wire cpu_mem_valid;
+  wire cpu_mem_instr;
+  reg cpu_mem_ready;
+  wire [31:0] cpu_mem_addr;
+  wire [31:0] cpu_mem_wdata;
+  wire [3:0] cpu_mem_wstrb;
+  reg [31:0] cpu_mem_rdata;
+  wire [31:0] ram_rdata, rom_rdata;
+
+  wire [31:0] ram_addr;
+  wire [31:0] ram_wdata;
+  wire [3:0] ram_wstrb;
+
+  wire [31:0] osd_mem_addr;
+
+  reg [31:0] ext_addr;
+  reg [7:0] ext_data; // XXX: Rename to cpu_mem_wdata_byte?
+  wire ext_ram_we;
+  wire ext_rom_basic_we;
+  wire ext_rom_char_we;
+  wire ext_rom_kernal_we;
+  wire ext_rom_cart_we;
+  wire ext_rom_1541_we;
+
+  assign ext_ram_we = (cpu_mem_addr[31:16] == 16'h5000) && cpu_mem_valid && (cpu_mem_wstrb != 0);
+  assign ext_rom_basic_we = (cpu_mem_addr[31:16] == 16'h5001) && cpu_mem_valid && (cpu_mem_wstrb != 0);
+  assign ext_rom_char_we = (cpu_mem_addr[31:16] == 16'h5002) && cpu_mem_valid && (cpu_mem_wstrb != 0);
+  assign ext_rom_kernal_we = (cpu_mem_addr[31:16] == 16'h5003) && cpu_mem_valid && (cpu_mem_wstrb != 0);
+  assign ext_rom_1541_we = (cpu_mem_addr[31:16] == 16'h5004) && cpu_mem_valid && (cpu_mem_wstrb != 0);
+  assign ext_rom_cart_we = (cpu_mem_addr[31:24] == 8'h51) && cpu_mem_valid && (cpu_mem_wstrb != 0);
+
+  always @* begin
+    case (cpu_mem_wstrb)
+      4'b0001: begin
+        ext_addr = {cpu_mem_addr[31:2], 2'b00};
+        ext_data = cpu_mem_wdata[7:0];
+      end
+      4'b0010: begin
+        ext_addr = {cpu_mem_addr[31:2], 2'b01};
+        ext_data = cpu_mem_wdata[15:8];
+      end
+      4'b0100: begin
+        ext_addr = {cpu_mem_addr[31:2], 2'b10};
+        ext_data = cpu_mem_wdata[23:16];
+      end
+      4'b1000: begin
+        ext_addr = {cpu_mem_addr[31:2], 2'b11};
+        ext_data = cpu_mem_wdata[31:24];
+      end
+      default: begin
+        ext_addr = 0;
+        ext_data = 0;
+      end
+    endcase
+  end
+
+
+
+  wire osd_ram_access;
+  wire [31:0] bridge_rdata;
+  wire [31:0] bridge_dpram_rdata;
+
+  assign ram_addr  = osd_ram_access ? osd_mem_addr : cpu_mem_addr;
+  assign ram_wdata = cpu_mem_wdata;
+  assign ram_wstrb = osd_ram_access ? 4'b0000 : cpu_mem_wstrb;
+
+  always @* begin
+    casex (cpu_mem_addr)
+      32'h0xxx_xxxx: cpu_mem_rdata = rom_rdata;
+      32'h1xxx_xxxx: cpu_mem_rdata = ram_rdata;
+      32'h2000_0000: cpu_mem_rdata = cont1_key_s;
+      32'h2000_0004: cpu_mem_rdata = cont2_key_s;
+      32'h2000_0008: cpu_mem_rdata = cont3_key_s;
+      32'h2000_000c: cpu_mem_rdata = cont4_key_s;
+      32'h2000_0010: cpu_mem_rdata = cont1_joy_s;
+      32'h2000_0014: cpu_mem_rdata = cont2_joy_s;
+      32'h2000_0018: cpu_mem_rdata = cont3_joy_s;
+      32'h2000_001c: cpu_mem_rdata = cont4_joy_s;
+      32'h2000_0020: cpu_mem_rdata = cont1_trig_s;
+      32'h2000_0024: cpu_mem_rdata = cont2_trig_s;
+      32'h2000_0028: cpu_mem_rdata = cont3_trig_s;
+      32'h2000_002c: cpu_mem_rdata = cont4_trig_s;
+      32'h3000_000c: cpu_mem_rdata = c64_ctrl;
+      32'h3000_0100: cpu_mem_rdata = {c1541_motor_on, c1541_led_on, c1541_track_no};
+      32'h4xxx_xxxx: cpu_mem_rdata = bridge_rdata;
+      32'h7xxx_xxxx: cpu_mem_rdata = bridge_dpram_rdata;
+      32'h9xxx_xxxx: cpu_mem_rdata = dataslot_table_rd_data_cpu;
+      default: cpu_mem_rdata = 0;
+    endcase
+  end
+
+  reg [1:0] osd_ctrl;
+  always @(posedge clk_8mhz) begin
+    if (rst) osd_ctrl <= 0;
+    else if (cpu_mem_addr == 32'h30000000 && cpu_mem_valid && cpu_mem_wstrb == 4'b1111)
+      osd_ctrl <= cpu_mem_wdata;
+  end
+
+  reg [6:0] c64_ctrl;
+  reg [12:0] c1541_track_len;
+  always @(posedge clk_8mhz) begin
+    if (rst) c64_ctrl <= 0;
+    else if (cpu_mem_addr == 32'h3000000c && cpu_mem_valid && cpu_mem_wstrb == 4'b1111)
+      c64_ctrl <= cpu_mem_wdata[6:0];
+    else if (cpu_mem_addr == 32'h30000104 && cpu_mem_valid && cpu_mem_wstrb == 4'b1111) begin
+      c1541_track_len <= cpu_mem_wdata[12:0];
+      $display("track_len: %d, track_no: %d", c1541_track_len, c1541_track_no);
+    end
+  end
+
+  reg [63:0] keyboard_mask;
+  always @(posedge clk_8mhz) begin
+    if (rst) keyboard_mask <= 0;
+    else if (cpu_mem_addr == 32'h30000004 && cpu_mem_valid && cpu_mem_wstrb == 4'b1111)
+      keyboard_mask[31:0] <= cpu_mem_wdata;
+    else if (cpu_mem_addr == 32'h30000008 && cpu_mem_valid && cpu_mem_wstrb == 4'b1111)
+      keyboard_mask[63:32] <= cpu_mem_wdata;
+  end
+
+  wire bridge_ack_pulse;
+
+  // Synchronize the 'reset_n' signal for safe use in the clk_8mhz domain (as
+  // well as the related clk_32mhz domain).
+  wire rst;
+  synch_3 s_reset_n (~reset_n, rst, clk_8mhz);
+  //assign rst = ~reset_n;
+
+  always @(posedge clk_8mhz) begin
+    if (rst) cpu_mem_ready <= 0;
+    else begin
+      casex (cpu_mem_addr)
+        32'h0xxx_xxxx: cpu_mem_ready <= ~cpu_mem_ready & cpu_mem_valid;
+        32'h1xxx_xxxx: cpu_mem_ready <= ~osd_ram_access & ~cpu_mem_ready & cpu_mem_valid;
+        32'h2xxx_xxxx: cpu_mem_ready <= ~cpu_mem_ready & cpu_mem_valid;
+        32'h3xxx_xxxx: cpu_mem_ready <= ~cpu_mem_ready & cpu_mem_valid;
+        32'h4xxx_xxxx: cpu_mem_ready <= bridge_ack_pulse;
+        32'h5000_xxxx: cpu_mem_ready <= ~cpu_mem_ready & cpu_mem_valid & ext_ram_ready;
+        32'h51xx_xxxx: cpu_mem_ready <= ~cpu_mem_ready & cpu_mem_valid & clk_8mhz_1mhz_ph1_en;
+        32'h5xxx_xxxx: cpu_mem_ready <= ~cpu_mem_ready & cpu_mem_valid;
+        32'h7xxx_xxxx: cpu_mem_ready <= ~cpu_mem_ready & cpu_mem_valid;
+        32'h9xxx_xxxx: cpu_mem_ready <= ~cpu_mem_ready & cpu_mem_valid;
+        default: cpu_mem_ready <= 0;
+      endcase
+    end
+  end
+
+  // ROM - CPU code.
+  sprom #(
+      .aw(11),
+      .dw(32),
+      .MEM_INIT_FILE("bios.vh")
+  ) u_rom (
+      .clk (clk_8mhz),
+      .rst (rst),
+      .ce  (cpu_mem_valid && cpu_mem_addr[31:28] == 4'h0),
+      .oe  (1'b1),
+      .addr(cpu_mem_addr[31:2]),
+      .do  (rom_rdata)
+  );
+
+  // RAM - shared between CPU and OSD. OSD has priority.
+  genvar gi;
+  generate
+    for (gi = 0; gi < 4; gi = gi + 1) begin : ram
+      spram #(
+          .aw(10),
+          .dw(8)
+      ) u_ram (
+          .clk (clk_8mhz),
+          .rst (rst),
+          .ce  (osd_ram_access || (cpu_mem_valid && cpu_mem_addr[31:28] == 4'h1)),
+          .oe  (1'b1),
+          .addr(ram_addr[31:2]),
+          .do  (ram_rdata[(gi+1)*8-1:gi*8]),
+          .di  (ram_wdata[(gi+1)*8-1:gi*8]),
+          .we  (ram_wstrb[gi])
+      );
+    end
+  endgenerate
+
+  picorv32 #(
+      .COMPRESSED_ISA(1),
+      .ENABLE_IRQ(1),
+      .ENABLE_MUL(1),
+      .ENABLE_DIV(1)
+  ) u_cpu (
+      .clk(clk_8mhz),
+      .resetn(~rst),
+      .mem_valid(cpu_mem_valid),
+      .mem_instr(cpu_mem_instr),
+      .mem_ready(cpu_mem_ready),
+      .mem_addr(cpu_mem_addr),
+      .mem_wdata(cpu_mem_wdata),
+      .mem_wstrb(cpu_mem_wstrb),
+      .mem_rdata(cpu_mem_rdata)
+  );
+
+
+  //
+  // On Screen Display (OSD)
+  //
+  reg [7:0] osd_offset_x; // XXX: Unguarded CDC
+  reg [7:0] osd_offset_y;
+
+  initial begin
+    osd_offset_x <= 1;
+    osd_offset_y <= 1;
+  end
+
+  always @(posedge clk_74a) begin
+    // Values written by APF during core boot
+    if (bridge_wr) begin
+      case (bridge_addr)
+        32'hA000_0000: osd_offset_x <= bridge_wr_data;
+        32'hA000_0004: osd_offset_y <= bridge_wr_data;
+      endcase
+    end
+  end
+
+  reg [8:0] video_pos_x;
+  reg [8:0] video_pos_y;
+
+  wire osd_match_x = video_pos_x == osd_offset_x;
+  wire osd_match_y = video_pos_y == osd_offset_y;
+
+  always @(posedge clk_8mhz) begin
+    if (video_vs) begin
+      video_pos_y <= 0;
+    end else if (video_hs) begin
+      video_pos_x <= 0;
+      if (video_pos_x != 0)  // I.e. video_de has been active
+        video_pos_y <= video_pos_y + 1;
+    end else if (video_de) begin
+      video_pos_x <= video_pos_x + 1;
+    end
+  end
+
+  reg [8:0] osd_x;
+  reg [8:0] osd_y;
+
+  always @(posedge clk_8mhz) begin
+    if (osd_match_x & osd_match_y) begin
+      osd_x <= 0;
+      osd_y <= 0;
+    end else if (osd_match_x) begin
+      osd_x <= 0;
+      osd_y <= osd_y + 1;
+    end else begin
+      osd_x <= osd_x + 1;
+    end
+  end
+
+  // OSD RAM area 256x64 (2KB with 1 bit per pixel)
+  wire osd_active;
+  assign osd_active = osd_ctrl[0] && video_de && osd_x[8] == 0 && (osd_ctrl[1] ? (osd_y[8:3] == 0) : (osd_y[8:6] == 0));
+  assign osd_mem_addr = {osd_y[5:0], osd_x[7:3]};
+  assign osd_ram_access = osd_active && osd_x[2:0] == 3'h0;
+
+  reg [7:0] osd_pixshift;
+  reg [7:0] osd_mem_rdata;
+
+  reg [9:0] osd_mem_addr_p;
+  reg osd_ram_access_p;
+  always @(posedge clk_8mhz) begin
+    osd_mem_addr_p   <= osd_mem_addr;
+    osd_ram_access_p <= osd_ram_access;
+  end
+
+  always @(*) begin
+    case (osd_mem_addr_p[1:0])
+      2'h0: osd_mem_rdata = ram_rdata[7:0];
+      2'h1: osd_mem_rdata = ram_rdata[15:8];
+      2'h2: osd_mem_rdata = ram_rdata[23:16];
+      2'h3: osd_mem_rdata = ram_rdata[31:24];
+    endcase
+  end
+
+  always @(posedge clk_8mhz) begin
+    if (osd_ram_access_p) osd_pixshift <= osd_mem_rdata;
+    else osd_pixshift <= {osd_pixshift[6:0], 1'b0};
+  end
+
+  wire [23:0] osd_rgb;
+  assign osd_rgb = osd_pixshift[7] ? 24'hff_ff_ff : 24'h30_40_50;
+
+  assign video_rgb_clock = clk_8mhz;
+  assign video_rgb_clock_90 = clk_8mhz_90deg;
+  assign video_rgb = video_de ? (osd_active ? osd_rgb : c64_color_rgb) : 0;
+  assign video_skip = 0;
+
+  bram_block_dp #(
+      .DATA(32),
+      .ADDR(8) // 1024 bytes in total
+  ) u_bridge_dpram (
+      .a_clk(clk_74a),
+      .a_wr(bridge_wr && bridge_addr[31:28] == 4'h7),
+      .a_addr(bridge_addr[31:2]),
+      .a_din({
+        bridge_wr_data[7:0], bridge_wr_data[15:8], bridge_wr_data[23:16], bridge_wr_data[31:24]
+      }),
+      .a_dout(  /* NC */),
+
+      .b_clk (clk_8mhz),
+      .b_wr  (1'b0),
+      .b_addr(cpu_mem_addr[31:2]),
+      .b_din (32'h0),
+      .b_dout(bridge_dpram_rdata)
+  );
+
+  wire [31:0] dataslot_table_rd_data;
+  wire [31:0] dataslot_table_rd_data_cpu;
+  bram_block_dp #(
+      .DATA(32),
+      .ADDR(6)
+  ) u_bridge_dataslot_table (
+      .a_clk (clk_74a),
+      .a_wr  (bridge_wr && bridge_addr[31:8] == 24'hF80020),
+      .a_addr(bridge_addr[31:2]),
+      .a_din (bridge_wr_data),
+      .a_dout(dataslot_table_rd_data),
+
+      .b_clk (clk_8mhz),
+      .b_wr  (1'b0),
+      .b_addr(cpu_mem_addr[31:2]),
+      .b_din (32'h0),
+      .b_dout(dataslot_table_rd_data_cpu)
+  );
+
+  // 8KB of DP track memory for 1541. Fed by bridge, read by 1541
+  bram_block_dp #(
+      .DATA(32),
+      .ADDR(11)
+  ) u_bridge_1541_track_ram (
+      .a_clk(clk_74a),
+      .a_wr(bridge_wr && bridge_addr[31:28] == 4'h9),
+      .a_addr(bridge_addr[31:2]),
+      .a_din({
+        bridge_wr_data[7:0], bridge_wr_data[15:8], bridge_wr_data[23:16], bridge_wr_data[31:24]
+      }),
+      .a_dout(  /* NC */),
+
+      .b_clk (clk_8mhz),
+      .b_wr  (1'b0),
+      .b_addr(c1541_track_mem_addr),
+      .b_din (32'h0),
+      .b_dout(c1541_track_mem_data)
+  );
+
 endmodule
