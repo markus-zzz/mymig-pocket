@@ -2,11 +2,11 @@
     "core": {
         "magic": "APF_VER_1",
         "metadata": {
-            "platform_ids": ["c64"],
-            "shortname": "MyC64",
-            "description": "My experimental Commodore 64 emulator",
+            "platform_ids": ["mymig"],
+            "shortname": "MyMig",
+            "description": "My experimental Amiga inspired RISC-V system",
             "author": "markus-zzz",
-            "url": "https://github.com/markus-zzz/myc64-pocket",
+            "url": "https://github.com/markus-zzz/mymig-pocket",
             "version": "VERSION",
             "date_release": "DATE_RELEASE"
         },
