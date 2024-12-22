@@ -58,6 +58,37 @@ class MyMig(Elaboratable):
   def elaborate(self, platform):
     m = Module()
 
+    H_TOTAL       = 480
+    H_ACTIVE      = 320
+    H_BLANK       = 160
+    H_FRONT_PORCH = 48
+    H_SYNC        = 32
+    H_BACK_PORCH  = 80
+    V_TOTAL       = 280
+    V_ACTIVE      = 256
+    V_BLANK       = 16
+    V_FRONT_PORCH = 3
+    V_SYNC        = 7
+    V_BACK_PORCH  = 6
+
+    hcntr = Signal(range(H_TOTAL))
+    vcntr = Signal(range(V_TOTAL))
+
+    m.d.sync += [self.o_video_hsync.eq(0), self.o_video_vsync.eq(0)]
+    with m.If(hcntr == (H_TOTAL - 1)):
+      m.d.sync += [hcntr.eq(0), self.o_video_hsync.eq(1)]
+      with m.If(vcntr == (V_TOTAL - 1)):
+        m.d.sync += [vcntr.eq(0), self.o_video_vsync.eq(1)]
+      with m.Else():
+        m.d.sync += vcntr.eq(vcntr + 1)
+    with m.Else():
+      m.d.sync += hcntr.eq(hcntr + 1)
+
+    # XXX: Could adjust these values (hcntr with -1) so that it can be synched instead of combinatorial?
+    m.d.comb += self.o_video_de.eq(((H_SYNC + H_BACK_PORCH) <= hcntr) & (hcntr < (H_TOTAL - H_FRONT_PORCH)) &
+                                   ((V_SYNC + V_BACK_PORCH) <= vcntr) & (vcntr < (V_TOTAL - V_FRONT_PORCH)))
+
+    m.d.comb += self.o_video_rgb.eq(Mux(self.o_video_de & (hcntr[0:5] == 0), 0xff0000, 0x000000))
 
     return m
 

@@ -947,96 +947,7 @@ module core_top (
 
 
   //
-  // On Screen Display (OSD)
-  //
-  reg [7:0] osd_offset_x; // XXX: Unguarded CDC
-  reg [7:0] osd_offset_y;
 
-  initial begin
-    osd_offset_x <= 1;
-    osd_offset_y <= 1;
-  end
-
-  always @(posedge clk_74a) begin
-    // Values written by APF during core boot
-    if (bridge_wr) begin
-      case (bridge_addr)
-        32'hA000_0000: osd_offset_x <= bridge_wr_data;
-        32'hA000_0004: osd_offset_y <= bridge_wr_data;
-      endcase
-    end
-  end
-
-  reg [8:0] video_pos_x;
-  reg [8:0] video_pos_y;
-
-  wire osd_match_x = video_pos_x == osd_offset_x;
-  wire osd_match_y = video_pos_y == osd_offset_y;
-
-  always @(posedge clk_8mhz) begin
-    if (video_vs) begin
-      video_pos_y <= 0;
-    end else if (video_hs) begin
-      video_pos_x <= 0;
-      if (video_pos_x != 0)  // I.e. video_de has been active
-        video_pos_y <= video_pos_y + 1;
-    end else if (video_de) begin
-      video_pos_x <= video_pos_x + 1;
-    end
-  end
-
-  reg [8:0] osd_x;
-  reg [8:0] osd_y;
-
-  always @(posedge clk_8mhz) begin
-    if (osd_match_x & osd_match_y) begin
-      osd_x <= 0;
-      osd_y <= 0;
-    end else if (osd_match_x) begin
-      osd_x <= 0;
-      osd_y <= osd_y + 1;
-    end else begin
-      osd_x <= osd_x + 1;
-    end
-  end
-
-  // OSD RAM area 256x64 (2KB with 1 bit per pixel)
-  wire osd_active;
-  assign osd_active = osd_ctrl[0] && video_de && osd_x[8] == 0 && (osd_ctrl[1] ? (osd_y[8:3] == 0) : (osd_y[8:6] == 0));
-  assign osd_mem_addr = {osd_y[5:0], osd_x[7:3]};
-  assign osd_ram_access = osd_active && osd_x[2:0] == 3'h0;
-
-  reg [7:0] osd_pixshift;
-  reg [7:0] osd_mem_rdata;
-
-  reg [9:0] osd_mem_addr_p;
-  reg osd_ram_access_p;
-  always @(posedge clk_8mhz) begin
-    osd_mem_addr_p   <= osd_mem_addr;
-    osd_ram_access_p <= osd_ram_access;
-  end
-
-  always @(*) begin
-    case (osd_mem_addr_p[1:0])
-      2'h0: osd_mem_rdata = ram_rdata[7:0];
-      2'h1: osd_mem_rdata = ram_rdata[15:8];
-      2'h2: osd_mem_rdata = ram_rdata[23:16];
-      2'h3: osd_mem_rdata = ram_rdata[31:24];
-    endcase
-  end
-
-  always @(posedge clk_8mhz) begin
-    if (osd_ram_access_p) osd_pixshift <= osd_mem_rdata;
-    else osd_pixshift <= {osd_pixshift[6:0], 1'b0};
-  end
-
-  wire [23:0] osd_rgb;
-  assign osd_rgb = osd_pixshift[7] ? 24'hff_ff_ff : 24'h30_40_50;
-
-  assign video_rgb_clock = clk_8mhz;
-  assign video_rgb_clock_90 = clk_8mhz_90deg;
-  assign video_rgb = video_de ? (osd_active ? osd_rgb : c64_color_rgb) : 0;
-  assign video_skip = 0;
 
   bram_block_dp #(
       .DATA(32),
@@ -1094,6 +1005,24 @@ module core_top (
       .b_addr(c1541_track_mem_addr),
       .b_din (32'h0),
       .b_dout(c1541_track_mem_data)
+  );
+
+  reg [2:0] video_hs_delay;
+  wire video_hs_wire;
+  always @(posedge clk_8mhz) video_hs_delay <= {video_hs_wire, video_hs_delay[2:1]};
+
+  assign video_rgb_clock = clk_8mhz;
+  assign video_rgb_clock_90 = clk_8mhz_90deg;
+  assign video_skip = 0;
+  assign video_hs = video_hs_delay[0];
+
+  mymig_top u_mymig(
+    .clk(clk_8mhz),
+    .rst(rst),
+    .o_video_rgb(video_rgb),
+    .o_video_de(video_de),
+    .o_video_hsync(video_hs_wire),
+    .o_video_vsync(video_vs)
   );
 
 endmodule
