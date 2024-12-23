@@ -43,17 +43,14 @@ from amaranth import *
 # V Freq          59.524          Hz
 
 
-class MyMig(Elaboratable):
+class VideoTiming(Elaboratable):
   def __init__(self):
 
-    self.o_video_rgb = Signal(24)
-    self.o_video_hsync = Signal()
-    self.o_video_vsync = Signal()
-    self.o_video_de = Signal()
-
-    self.ports = [
-        self.o_video_rgb, self.o_video_hsync, self.o_video_vsync, self.o_video_de
-    ]
+    self.o_hsync = Signal()
+    self.o_vsync = Signal()
+    self.o_de = Signal()
+    self.o_hpos = Signal(9)
+    self.o_vpos = Signal(8)
 
   def elaborate(self, platform):
     m = Module()
@@ -74,21 +71,121 @@ class MyMig(Elaboratable):
     hcntr = Signal(range(H_TOTAL))
     vcntr = Signal(range(V_TOTAL))
 
-    m.d.sync += [self.o_video_hsync.eq(0), self.o_video_vsync.eq(0)]
+    m.d.sync += [self.o_hsync.eq(0), self.o_vsync.eq(0)]
     with m.If(hcntr == (H_TOTAL - 1)):
-      m.d.sync += [hcntr.eq(0), self.o_video_hsync.eq(1)]
+      m.d.sync += [hcntr.eq(0), self.o_hsync.eq(1)]
       with m.If(vcntr == (V_TOTAL - 1)):
-        m.d.sync += [vcntr.eq(0), self.o_video_vsync.eq(1)]
+        m.d.sync += [vcntr.eq(0), self.o_vsync.eq(1)]
       with m.Else():
         m.d.sync += vcntr.eq(vcntr + 1)
     with m.Else():
       m.d.sync += hcntr.eq(hcntr + 1)
 
     # XXX: Could adjust these values (hcntr with -1) so that it can be synched instead of combinatorial?
-    m.d.comb += self.o_video_de.eq(((H_SYNC + H_BACK_PORCH) <= hcntr) & (hcntr < (H_TOTAL - H_FRONT_PORCH)) &
+    m.d.comb += self.o_de.eq(((H_SYNC + H_BACK_PORCH) <= hcntr) & (hcntr < (H_TOTAL - H_FRONT_PORCH)) &
                                    ((V_SYNC + V_BACK_PORCH) <= vcntr) & (vcntr < (V_TOTAL - V_FRONT_PORCH)))
 
-    m.d.comb += self.o_video_rgb.eq(Mux(self.o_video_de & (hcntr[0:5] == 0), 0xff0000, 0x000000))
+#    with m.If(self.o_hsync):
+#      m.d.sync += self.o_hpos.eq(0)
+#    with m.Elif(self.o_de):
+#      m.d.sync += self.o_hpos.eq(self.o_hpos + 1)
+#
+#    with m.If(self.o_vsync):
+#      m.d.sync += self.o_vpos.eq(0)
+#    with m.Elif(self.o_de):
+#      m.d.sync += self.o_vpos.eq(self.o_vpos + 1)
+
+    m.d.comb += [self.o_hpos.eq(hcntr), self.o_vpos.eq(vcntr)]
+
+    return m
+
+#
+# Copper
+#
+class Copper(Elaboratable):
+  def __init__(self):
+
+    # Chip RAM read access
+    self.o_chip_ram_addr = Signal(20)
+    self.i_chip_ram_data = Signal(16)
+    self.o_chip_ram_req = Signal()
+    self.i_chip_ram_ack = Signal()
+
+    # Chip reg write access (egress)
+    self.o_chip_reg_addr = Signal(8)
+    self.o_chip_reg_data = Signal(16)
+
+    # Chip reg write access (ingress)
+    self.i_chip_reg_addr = Signal(8)
+    self.i_chip_reg_data = Signal(16)
+
+  def elaborate(self, platform):
+    m = Module()
+    return m
+
+#
+# Sprites
+#
+class Sprite(Elaboratable):
+  def __init__(self):
+
+    self.i_hpos = Signal(9)
+    self.i_vpos = Signal(8)
+    self.o_color = Signal(5)
+    self.o_color_en = Signal()
+
+    # Chip RAM read access
+    self.o_chip_ram_addr = Signal(20)
+    self.i_chip_ram_data = Signal(16)
+    self.o_chip_ram_req = Signal()
+    self.i_chip_ram_ack = Signal()
+
+    # Chip reg write access (ingress)
+    self.i_chip_reg_addr = Signal(8)
+    self.i_chip_reg_data = Signal(16)
+
+  def elaborate(self, platform):
+    m = Module()
+    return m
+
+
+#
+# MyMig
+#
+class MyMig(Elaboratable):
+  def __init__(self):
+
+    # Video signal
+    self.o_video_rgb = Signal(24)
+    self.o_video_hsync = Signal()
+    self.o_video_vsync = Signal()
+    self.o_video_de = Signal()
+
+    # CPU interface
+    self.i_cpu_addr = Signal(32)
+    self.i_cpu_data = Signal(16)
+    self.o_cpu_data = Signal(16)
+    self.i_cpu_req = Signal()
+    self.i_cpu_we = Signal()
+    self.o_cpu_ack = Signal()
+
+    self.ports = [
+        self.o_video_rgb, self.o_video_hsync, self.o_video_vsync, self.o_video_de
+    ]
+
+  def elaborate(self, platform):
+    m = Module()
+
+    m.submodules.u_video = u_video = VideoTiming()
+    m.submodules.u_copper = u_copper = Copper()
+
+    m.d.comb += [
+      self.o_video_hsync.eq(u_video.o_hsync),
+      self.o_video_vsync.eq(u_video.o_vsync),
+      self.o_video_de.eq(u_video.o_de),
+    ]
+
+    m.d.comb += self.o_video_rgb.eq(Mux(u_video.o_de & ((u_video.o_hpos[0:5] == 0) | (u_video.o_vpos[0:5] == 0)), 0xff0000, 0x000000))
 
     return m
 
