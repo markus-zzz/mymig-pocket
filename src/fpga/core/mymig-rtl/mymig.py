@@ -20,6 +20,8 @@
 
 from amaranth import *
 
+REG_COLOR00 = 0x180
+
 
 ########################################################
 # Video Timing for 320x256@60
@@ -170,7 +172,8 @@ class MyMig(Elaboratable):
     self.o_cpu_ack = Signal()
 
     self.ports = [
-        self.o_video_rgb, self.o_video_hsync, self.o_video_vsync, self.o_video_de
+        self.o_video_rgb, self.o_video_hsync, self.o_video_vsync, self.o_video_de,
+        self.i_cpu_addr, self.i_cpu_data, self.o_cpu_data, self.i_cpu_req, self.i_cpu_we, self.o_cpu_ack,
     ]
 
   def elaborate(self, platform):
@@ -185,7 +188,38 @@ class MyMig(Elaboratable):
       self.o_video_de.eq(u_video.o_de),
     ]
 
-    m.d.comb += self.o_video_rgb.eq(Mux(u_video.o_de & ((u_video.o_hpos[0:5] == 0) | (u_video.o_vpos[0:5] == 0)), 0xff0000, 0x000000))
+    color = Signal(5)
+    m.d.comb += color.eq(0) # Default background color
+
+    with m.If(u_video.o_de & ((u_video.o_hpos[0:5] == 0) | (u_video.o_vpos[0:5] == 0))):
+      m.d.comb += color.eq(1)
+
+    chip_reg_addr = Signal(9)
+    chip_reg_rdata = Signal(16)
+    chip_reg_wdata = Signal(16)
+    chip_reg_wen = Signal()
+
+    # XXX: Copper should also have access to the chip_reg bus
+    with m.If((self.i_cpu_addr[24:32] == 0xff) & self.i_cpu_req & self.i_cpu_we):
+      m.d.comb += [
+        chip_reg_addr.eq(self.i_cpu_addr[0:9]),
+        chip_reg_wdata.eq(self.i_cpu_data),
+        chip_reg_wen.eq(1),
+        self.o_cpu_ack.eq(1),
+      ]
+
+    # Registers COLOR00-COLOR31
+    color_palette = Array([Signal(12) for _ in range(32)])
+    # Generate address decode logic for writes
+    for idx, color_reg in enumerate(color_palette):
+      with m.If((chip_reg_addr == (REG_COLOR00 + idx * 2)) & chip_reg_wen):
+        m.d.sync += color_reg.eq(chip_reg_wdata)
+      s = Signal(color_reg.shape(), name='color_reg_{}'.format(idx))
+      m.d.comb += s.eq(color_reg)
+
+    color_rgb = Signal(12)
+    m.d.comb += color_rgb.eq(color_palette[color])
+    m.d.comb += self.o_video_rgb.eq(Cat(C(0,4), color_rgb[0:4], C(0,4), color_rgb[4:8], C(0,4), color_rgb[8:12]))
 
     return m
 

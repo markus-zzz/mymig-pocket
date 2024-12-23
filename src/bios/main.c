@@ -63,6 +63,15 @@ osd_mode_t osd_mode;
 
 int main(void) {
 
+  volatile uint16_t *color00 = (volatile uint16_t *)0xff000180;
+  volatile uint16_t *color01 = (volatile uint16_t *)0xff000182;
+
+  *color00 = 0xabc;
+  *color01 = 0xdef;
+
+  while (1);
+
+
   // Wait for previous command to finish
   while ((*TARGET_0 >> 16) != 0x6F6B)
     ;

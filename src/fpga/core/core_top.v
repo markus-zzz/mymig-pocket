@@ -889,6 +889,7 @@ module core_top (
         32'h5xxx_xxxx: cpu_mem_ready <= ~cpu_mem_ready & cpu_mem_valid;
         32'h7xxx_xxxx: cpu_mem_ready <= ~cpu_mem_ready & cpu_mem_valid;
         32'h9xxx_xxxx: cpu_mem_ready <= ~cpu_mem_ready & cpu_mem_valid;
+        32'hffxx_xxxx: cpu_mem_ready <= ~cpu_mem_ready & cpu_mem_valid & mymig_cpu_ack;
         default: cpu_mem_ready <= 0;
       endcase
     end
@@ -1011,18 +1012,28 @@ module core_top (
   wire video_hs_wire;
   always @(posedge clk_8mhz) video_hs_delay <= {video_hs_wire, video_hs_delay[2:1]};
 
+  wire [23:0] video_rgb_wire;
+  assign video_rgb = video_de ? video_rgb_wire : 0;
+
   assign video_rgb_clock = clk_8mhz;
   assign video_rgb_clock_90 = clk_8mhz_90deg;
   assign video_skip = 0;
   assign video_hs = video_hs_delay[0];
 
+  wire mymig_cpu_ack;
+
   mymig_top u_mymig(
     .clk(clk_8mhz),
     .rst(rst),
-    .o_video_rgb(video_rgb),
+    .o_video_rgb(video_rgb_wire),
     .o_video_de(video_de),
     .o_video_hsync(video_hs_wire),
-    .o_video_vsync(video_vs)
+    .o_video_vsync(video_vs),
+    .i_cpu_addr(cpu_mem_wstrb == 4'b1100 ? {cpu_mem_addr[31:2], 2'b10} : cpu_mem_addr),
+    .i_cpu_data(cpu_mem_wstrb == 4'b1100 ? cpu_mem_wdata[31:0] : cpu_mem_wdata[15:0]),
+    .i_cpu_req(cpu_mem_valid ),
+    .i_cpu_we(cpu_mem_wstrb != 0),
+    .o_cpu_ack(mymig_cpu_ack)
   );
 
 endmodule
