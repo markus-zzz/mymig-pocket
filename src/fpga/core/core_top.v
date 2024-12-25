@@ -835,6 +835,7 @@ module core_top (
       32'h4xxx_xxxx: cpu_mem_rdata = bridge_rdata;
       32'h7xxx_xxxx: cpu_mem_rdata = bridge_dpram_rdata;
       32'h9xxx_xxxx: cpu_mem_rdata = dataslot_table_rd_data_cpu;
+      32'hffxx_xxxx: cpu_mem_rdata = {2{mymig_cpu_mem_rdata}};
       default: cpu_mem_rdata = 0;
     endcase
   end
@@ -1020,6 +1021,7 @@ module core_top (
   assign video_skip = 0;
   assign video_hs = video_hs_delay[0];
 
+  wire [15:0] mymig_cpu_mem_rdata;
   wire mymig_cpu_ack;
 
   wire [19:0] chip_ram_addr;
@@ -1040,19 +1042,20 @@ module core_top (
     .i_cpu_data(cpu_mem_wstrb == 4'b1100 ? cpu_mem_wdata[31:0] : cpu_mem_wdata[15:0]),
     .i_cpu_req(cpu_mem_addr[31:24] == 8'hff && cpu_mem_valid),
     .i_cpu_we(cpu_mem_wstrb != 0),
+    .o_cpu_data(mymig_cpu_mem_rdata),
     .o_cpu_ack(mymig_cpu_ack),
     // Chip RAM
-    .i_chip_ram_addr(chip_ram_addr),
+    .o_chip_ram_addr(chip_ram_addr),
     .i_chip_ram_data(chip_ram_rdata),
     .o_chip_ram_data(chip_ram_wdata),
-    .i_chip_ram_we(chip_ram_we)
+    .o_chip_ram_we(chip_ram_we)
   );
 
   spram #(
       .aw(16),
       .dw(16)
   ) u_chip_ram (
-      .clk (clk_8mhz),
+      .clk (clk_32mhz),
       .rst (rst),
       .ce  (1'b1),
       .oe  (1'b1),

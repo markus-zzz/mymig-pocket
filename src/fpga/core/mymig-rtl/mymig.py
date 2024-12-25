@@ -172,15 +172,15 @@ class MyMig(Elaboratable):
     self.o_cpu_ack = Signal()
 
     # Chip RAM interface
-    self.i_chip_ram_addr = Signal(20)
+    self.o_chip_ram_addr = Signal(20)
     self.i_chip_ram_data = Signal(16)
     self.o_chip_ram_data = Signal(16)
-    self.i_chip_ram_we = Signal()
+    self.o_chip_ram_we = Signal()
 
     self.ports = [
         self.o_video_rgb, self.o_video_hsync, self.o_video_vsync, self.o_video_de,
         self.i_cpu_addr, self.i_cpu_data, self.o_cpu_data, self.i_cpu_req, self.i_cpu_we, self.o_cpu_ack,
-        self.i_chip_ram_addr, self.i_chip_ram_data, self.o_chip_ram_data, self.i_chip_ram_we,
+        self.o_chip_ram_addr, self.i_chip_ram_data, self.o_chip_ram_data, self.o_chip_ram_we,
     ]
 
   def elaborate(self, platform):
@@ -188,6 +188,29 @@ class MyMig(Elaboratable):
 
     m.submodules.u_video = u_video = VideoTiming()
     m.submodules.u_copper = u_copper = Copper()
+
+    #
+    # Chip RAM arbitration - begin
+    #
+    m.d.comb += [
+      u_copper.i_chip_ram_data.eq(self.i_chip_ram_data),
+    ]
+    with m.If(u_copper.o_chip_ram_req): # Copper (R)
+      m.d.comb += [
+        self.o_chip_ram_addr.eq(u_copper.o_chip_ram_addr),
+        u_copper.i_chip_ram_ack.eq(1),
+      ]
+    with m.Elif(self.i_cpu_req & ((0 <= self.i_cpu_addr) & (self.i_cpu_addr < 0x1fffff))): # CPU (R/W)
+      m.d.comb += [
+        self.o_chip_ram_addr.eq(self.i_cpu_addr[1:]),
+        self.o_chip_ram_data.eq(self.i_cpu_data),
+        self.o_chip_ram_we.eq(self.i_cpu_we),
+        self.o_cpu_data.eq(self.i_chip_ram_data),
+        self.o_cpu_ack.eq(1),
+      ]
+    #
+    # Chip RAM arbitration - end
+    #
 
     m.d.comb += [
       self.o_video_hsync.eq(u_video.o_hsync),

@@ -359,18 +359,23 @@ int main(int argc, char *argv[]) {
     if (reset_cntr++ > 320) {
       dut->reset_n = 1;
     }
-    dut->clk_74a = !dut->clk_74a;
-    if (dut->clk_74a) {
-      // Handle mockup bridge
-      bridge.Tick();
-      // Frame dumper
-      if (framedumper)
-        framedumper->Tick();
-      // Frame index increment if vsync comes after all handlers
-      if (dut->video_vs) {
-        g_frame_idx++;
-        if (exit_frame != 0 && exit_frame == g_frame_idx) {
-          exit(0);
+
+
+    dut->clk_32mhz = !dut->clk_32mhz;
+    if (g_ticks % 4 == 0) {
+      dut->clk_74a = !dut->clk_74a;
+      if (dut->clk_74a) {
+        // Handle mockup bridge
+        bridge.Tick();
+        // Frame dumper
+        if (framedumper)
+          framedumper->Tick();
+        // Frame index increment if vsync comes after all handlers
+        if (dut->video_vs) {
+          g_frame_idx++;
+          if (exit_frame != 0 && exit_frame == g_frame_idx) {
+            exit(0);
+          }
         }
       }
     }

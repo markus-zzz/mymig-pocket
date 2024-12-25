@@ -63,13 +63,16 @@ osd_mode_t osd_mode;
 
 int main(void) {
 
+  volatile uint16_t *chip_ram = (volatile uint16_t *)0xff000000;
   volatile uint16_t *color00 = (volatile uint16_t *)0xffdff180;
   volatile uint16_t *color01 = (volatile uint16_t *)0xffdff182;
   volatile uint16_t *color02 = (volatile uint16_t *)0xffdff184;
   volatile uint16_t *color03 = (volatile uint16_t *)0xffdff186;
 
+  chip_ram[5] = 5;
+
   *color00 = 0xabc;
-  *color01 = 0xdef;
+  *color01 = 0xdef + chip_ram[5];
   (void)*color02;
   (void)*color03;
 
