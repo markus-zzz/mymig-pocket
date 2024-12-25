@@ -164,16 +164,23 @@ class MyMig(Elaboratable):
     self.o_video_de = Signal()
 
     # CPU interface
-    self.i_cpu_addr = Signal(32)
+    self.i_cpu_addr = Signal(24)
     self.i_cpu_data = Signal(16)
     self.o_cpu_data = Signal(16)
     self.i_cpu_req = Signal()
     self.i_cpu_we = Signal()
     self.o_cpu_ack = Signal()
 
+    # Chip RAM interface
+    self.i_chip_ram_addr = Signal(20)
+    self.i_chip_ram_data = Signal(16)
+    self.o_chip_ram_data = Signal(16)
+    self.i_chip_ram_we = Signal()
+
     self.ports = [
         self.o_video_rgb, self.o_video_hsync, self.o_video_vsync, self.o_video_de,
         self.i_cpu_addr, self.i_cpu_data, self.o_cpu_data, self.i_cpu_req, self.i_cpu_we, self.o_cpu_ack,
+        self.i_chip_ram_addr, self.i_chip_ram_data, self.o_chip_ram_data, self.i_chip_ram_we,
     ]
 
   def elaborate(self, platform):
@@ -200,11 +207,12 @@ class MyMig(Elaboratable):
     chip_reg_wen = Signal()
 
     # XXX: Copper should also have access to the chip_reg bus
-    with m.If((self.i_cpu_addr[24:32] == 0xff) & self.i_cpu_req & self.i_cpu_we):
+    with m.If((self.i_cpu_addr[12:24] == 0xdff) & self.i_cpu_req):
       m.d.comb += [
         chip_reg_addr.eq(self.i_cpu_addr[0:9]),
         chip_reg_wdata.eq(self.i_cpu_data),
-        chip_reg_wen.eq(1),
+        chip_reg_wen.eq(self.i_cpu_we),
+        self.o_cpu_data.eq(chip_reg_rdata),
         self.o_cpu_ack.eq(1),
       ]
 

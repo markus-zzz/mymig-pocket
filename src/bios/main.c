@@ -63,11 +63,15 @@ osd_mode_t osd_mode;
 
 int main(void) {
 
-  volatile uint16_t *color00 = (volatile uint16_t *)0xff000180;
-  volatile uint16_t *color01 = (volatile uint16_t *)0xff000182;
+  volatile uint16_t *color00 = (volatile uint16_t *)0xffdff180;
+  volatile uint16_t *color01 = (volatile uint16_t *)0xffdff182;
+  volatile uint16_t *color02 = (volatile uint16_t *)0xffdff184;
+  volatile uint16_t *color03 = (volatile uint16_t *)0xffdff186;
 
   *color00 = 0xabc;
   *color01 = 0xdef;
+  (void)*color02;
+  (void)*color03;
 
   while (1);
 

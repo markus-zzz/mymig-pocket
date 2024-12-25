@@ -1022,18 +1022,44 @@ module core_top (
 
   wire mymig_cpu_ack;
 
+  wire [19:0] chip_ram_addr;
+  wire [15:0] chip_ram_rdata;
+  wire [15:0] chip_ram_wdata;
+  wire chip_ram_we;
+
   mymig_top u_mymig(
     .clk(clk_8mhz),
     .rst(rst),
+    // Video
     .o_video_rgb(video_rgb_wire),
     .o_video_de(video_de),
     .o_video_hsync(video_hs_wire),
     .o_video_vsync(video_vs),
-    .i_cpu_addr(cpu_mem_wstrb == 4'b1100 ? {cpu_mem_addr[31:2], 2'b10} : cpu_mem_addr),
+    // CPU
+    .i_cpu_addr(cpu_mem_addr[23:0]),
     .i_cpu_data(cpu_mem_wstrb == 4'b1100 ? cpu_mem_wdata[31:0] : cpu_mem_wdata[15:0]),
-    .i_cpu_req(cpu_mem_valid ),
+    .i_cpu_req(cpu_mem_addr[31:24] == 8'hff && cpu_mem_valid),
     .i_cpu_we(cpu_mem_wstrb != 0),
-    .o_cpu_ack(mymig_cpu_ack)
+    .o_cpu_ack(mymig_cpu_ack),
+    // Chip RAM
+    .i_chip_ram_addr(chip_ram_addr),
+    .i_chip_ram_data(chip_ram_rdata),
+    .o_chip_ram_data(chip_ram_wdata),
+    .i_chip_ram_we(chip_ram_we)
+  );
+
+  spram #(
+      .aw(16),
+      .dw(16)
+  ) u_chip_ram (
+      .clk (clk_8mhz),
+      .rst (rst),
+      .ce  (1'b1),
+      .oe  (1'b1),
+      .addr(chip_ram_addr),
+      .do  (chip_ram_rdata),
+      .di  (chip_ram_wdata),
+      .we  (chip_ram_we)
   );
 
 endmodule
