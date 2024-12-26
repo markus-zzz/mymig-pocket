@@ -122,7 +122,7 @@ class Copper(Elaboratable):
     self.i_chip_ram_ack = Signal()
 
     # Chip reg write access (egress)
-    self.o_chip_reg_addr = Signal(8)
+    self.o_chip_reg_addr = Signal(9)
     self.o_chip_reg_data = Signal(16)
     self.o_chip_reg_wen = Signal()
 
@@ -143,6 +143,7 @@ class Copper(Elaboratable):
     ir = Signal(32)
     location1 = Signal(19)
     location2 = Signal(19)
+    enabled = Signal() # XXX: Does not really exist in real HW
 
     m.d.comb += self.o_chip_ram_addr.eq(pc)
 
@@ -152,34 +153,38 @@ class Copper(Elaboratable):
       EXECUTE = 2
     state = Signal(State)
 
-    with m.Switch(state):
-      with m.Case(State.FETCH1):
-        m.d.comb += self.o_chip_ram_req.eq(1)
-        m.d.sync += [
-          ir[0:16].eq(self.i_chip_ram_data),
-          pc.eq(pc + 2),
-          state.eq(State.FETCH2),
-        ]
-      with m.Case(State.FETCH2):
-        m.d.comb += self.o_chip_ram_req.eq(1)
-        m.d.sync += [
-          ir[16:32].eq(self.i_chip_ram_data),
-          pc.eq(pc + 2),
-          state.eq(State.EXECUTE),
-        ]
-      with m.Case(State.EXECUTE):
-        with m.If(ir[0] == 0): # MOVE
-          m.d.comb += [
-            self.o_chip_reg_addr.eq(ir[1:9]),
-            self.o_chip_reg_data.eq(ir[16:32]),
-            self.o_chip_reg_wen.eq(1),
-          ]
-          m.d.sync += state.eq(State.FETCH1)
-        with m.Elif((ir[0] == 1) & (ir[16] == 0)): # WAIT
-          with m.If(((self.i_vpos & ir[24:31]) >= ir[8:16]) & ((self.i_hpos & ir[17:24]) >= ir[1:8])):
+    with m.If(enabled):
+      with m.Switch(state):
+        with m.Case(State.FETCH1):
+          m.d.comb += self.o_chip_ram_req.eq(1)
+          with m.If(self.i_chip_ram_ack):
+            m.d.sync += [
+              ir[0:16].eq(self.i_chip_ram_data),
+              pc.eq(pc + 1),
+              state.eq(State.FETCH2),
+            ]
+        with m.Case(State.FETCH2):
+          m.d.comb += self.o_chip_ram_req.eq(1)
+          with m.If(self.i_chip_ram_ack):
+            m.d.sync += [
+              ir[16:32].eq(self.i_chip_ram_data),
+              pc.eq(pc + 1),
+              state.eq(State.EXECUTE),
+            ]
+        with m.Case(State.EXECUTE):
+          with m.If(ir[0] == 0): # MOVE
+            m.d.comb += [
+              self.o_chip_reg_addr.eq(Cat(C(0, 1), ir[1:9])),
+              self.o_chip_reg_data.eq(ir[16:32]),
+              self.o_chip_reg_wen.eq(1),
+            ]
             m.d.sync += state.eq(State.FETCH1)
-        with m.Elif((ir[0] == 1) & (ir[16] == 1)): # SKIP
-          pass
+          with m.Elif((ir[0] == 1) & (ir[16] == 0)): # WAIT
+            #with m.If(((self.i_vpos & ir[24:31]) >= ir[8:16]) & ((self.i_hpos & ir[17:24]) >= ir[1:8])):
+            with m.If((self.i_vpos >= ir[8:16]) & (ir[24:31] != 0)):
+              m.d.sync += state.eq(State.FETCH1)
+          with m.Elif((ir[0] == 1) & (ir[16] == 1)): # SKIP
+            pass
 
     # Register access
     with m.If(self.i_chip_reg_wen):
@@ -196,6 +201,7 @@ class Copper(Elaboratable):
           m.d.sync += [
             pc.eq(location1),
             state.eq(State.FETCH1),
+            enabled.eq(1),
           ]
         with m.Case(REG_COPJMP2):
           m.d.sync += [
@@ -203,6 +209,7 @@ class Copper(Elaboratable):
             state.eq(State.FETCH1),
           ]
 
+    # Program restarts every vsync
     with m.If(self.i_vsync):
       m.d.sync += [
         pc.eq(location1),
@@ -275,11 +282,23 @@ class MyMig(Elaboratable):
     m.submodules.u_video = u_video = VideoTiming()
     m.submodules.u_copper = u_copper = Copper()
 
+    chip_reg_addr = Signal(9)
+    chip_reg_rdata = Signal(16)
+    chip_reg_wdata = Signal(16)
+    chip_reg_wen = Signal()
+
+
     #
     # Chip RAM arbitration - begin
     #
     m.d.comb += [
       u_copper.i_chip_ram_data.eq(self.i_chip_ram_data),
+      u_copper.i_vsync.eq(u_video.o_vsync),
+      u_copper.i_hpos.eq(u_video.o_hpos),
+      u_copper.i_vpos.eq(u_video.o_vpos),
+      u_copper.i_chip_reg_addr.eq(chip_reg_addr),
+      u_copper.i_chip_reg_data.eq(chip_reg_wdata),
+      u_copper.i_chip_reg_wen.eq(chip_reg_wen),
     ]
     with m.If(u_copper.o_chip_ram_req): # Copper (R)
       m.d.comb += [
@@ -307,15 +326,17 @@ class MyMig(Elaboratable):
     color = Signal(5)
     m.d.comb += color.eq(0) # Default background color
 
-    with m.If(u_video.o_de & ((u_video.o_hpos[0:5] == 0) | (u_video.o_vpos[0:5] == 0))):
-      m.d.comb += color.eq(1)
+    # XXX: Sprites and Playfields to override color
 
-    chip_reg_addr = Signal(9)
-    chip_reg_rdata = Signal(16)
-    chip_reg_wdata = Signal(16)
-    chip_reg_wen = Signal()
-
-    # XXX: Copper should also have access to the chip_reg bus
+    #
+    # Chip REG arbitration - begin
+    #
+    with m.If(u_copper.o_chip_reg_wen):
+      m.d.comb += [
+        chip_reg_addr.eq(u_copper.o_chip_reg_addr),
+        chip_reg_wdata.eq(u_copper.o_chip_reg_data),
+        chip_reg_wen.eq(u_copper.o_chip_reg_wen),
+      ]
     with m.If((self.i_cpu_addr[12:24] == 0xdff) & self.i_cpu_req):
       m.d.comb += [
         chip_reg_addr.eq(self.i_cpu_addr[0:9]),
@@ -324,6 +345,9 @@ class MyMig(Elaboratable):
         self.o_cpu_data.eq(chip_reg_rdata),
         self.o_cpu_ack.eq(1),
       ]
+    #
+    # Chip REG arbitration - end
+    #
 
     # Registers COLOR00-COLOR31
     color_palette = Array([Signal(12) for _ in range(32)])

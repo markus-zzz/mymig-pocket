@@ -61,15 +61,61 @@ uint8_t updated_slots;
 static volatile int osd_idx;
 osd_mode_t osd_mode;
 
+volatile uint16_t *chip_ram = (volatile uint16_t *)0xff000000;
+volatile uint16_t *color00 = (volatile uint16_t *)0xffdff180;
+volatile uint16_t *color01 = (volatile uint16_t *)0xffdff182;
+volatile uint16_t *color02 = (volatile uint16_t *)0xffdff184;
+volatile uint16_t *color03 = (volatile uint16_t *)0xffdff186;
+
+volatile uint16_t *cop1lch = (volatile uint16_t *)0xffdff080;
+volatile uint16_t *cop1lcl = (volatile uint16_t *)0xffdff082;
+volatile uint16_t *cop2lch = (volatile uint16_t *)0xffdff084;
+volatile uint16_t *cop2lcl = (volatile uint16_t *)0xffdff086;
+volatile uint16_t *copjmp1 = (volatile uint16_t *)0xffdff088;
+volatile uint16_t *copjmp2 = (volatile uint16_t *)0xffdff08A;
+
+volatile uint16_t *copper_move(volatile uint16_t *instr_addr, uint16_t reg, uint16_t data) {
+  instr_addr[0] = ((reg & 0x1ff) >> 1) << 1;
+  instr_addr[1] = data;
+  return &instr_addr[2];
+}
+
+volatile uint16_t *copper_wait(volatile uint16_t *instr_addr, uint8_t ve, uint8_t vp, uint8_t he, uint8_t hp) {
+  instr_addr[0] = ((uint16_t)vp << 8) | ((uint16_t)(hp & 0x7f) << 1) | 1;
+  instr_addr[1] = ((uint16_t)(ve & 0x7f) << 8) | ((uint16_t)(he & 0x7f) << 1) | 0;
+  return &instr_addr[2];
+}
+
 int main(void) {
 
-  volatile uint16_t *chip_ram = (volatile uint16_t *)0xff000000;
-  volatile uint16_t *color00 = (volatile uint16_t *)0xffdff180;
-  volatile uint16_t *color01 = (volatile uint16_t *)0xffdff182;
-  volatile uint16_t *color02 = (volatile uint16_t *)0xffdff184;
-  volatile uint16_t *color03 = (volatile uint16_t *)0xffdff186;
 
-  chip_ram[5] = 5;
+  chip_ram[0x100] = 0x23 << 1;
+  chip_ram[0x101] = 0xcafe;
+
+  volatile uint16_t *pos = &chip_ram[0x100];
+  // Black
+  pos = copper_move(pos, 0x180, 0x000);
+  // Red
+  pos = copper_wait(pos, 0xff, 100, 0xff, 0);
+  pos = copper_move(pos, 0x180, 0xf00);
+  // Green
+  pos = copper_wait(pos, 0xff, 120, 0xff, 0);
+  pos = copper_move(pos, 0x180, 0x0f0);
+  // Blue
+  pos = copper_wait(pos, 0xff, 140, 0xff, 0);
+  pos = copper_move(pos, 0x180, 0x00f);
+  // Black
+  pos = copper_wait(pos, 0xff, 160, 0xff, 0);
+  pos = copper_move(pos, 0x180, 0x000);
+  // EOL
+  pos = copper_wait(pos, 0, 0, 0, 0);
+
+  *cop1lch = 0;
+  *cop1lcl = 0x100;
+
+  *copjmp1 = 0;
+
+  while (1);
 
   *color00 = 0xabc;
   *color01 = 0xdef + chip_ram[5];
