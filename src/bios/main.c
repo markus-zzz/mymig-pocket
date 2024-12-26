@@ -108,7 +108,7 @@ int main(void) {
   pos = copper_wait(pos, 0xff, 160, 0xff, 0);
   pos = copper_move(pos, 0x180, 0x000);
   // EOL
-  pos = copper_wait(pos, 0, 0, 0, 0);
+  pos = copper_wait(pos, 0xff, 0xff, 0xff, 0xff);
 
   *cop1lch = 0;
   *cop1lcl = 0x100;

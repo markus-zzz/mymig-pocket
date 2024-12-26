@@ -20,7 +20,7 @@
 
 from amaranth import *
 from video import *
-from copper import *
+from copper import Copper
 from chipregs import *
 from sprites import *
 

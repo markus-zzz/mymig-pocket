@@ -19,8 +19,28 @@
 # yapf --in-place --recursive --style="{indent_width: 2, column_limit: 120}"
 
 from amaranth import *
+from amaranth.lib import data
 from chipregs import *
 import enum
+
+InstrLayout = data.UnionLayout({
+  "raw": unsigned(32),
+  "move": data.StructLayout({
+    "always_0": unsigned(1),
+    "reg": unsigned(8),
+    "reserved": unsigned(7),
+    "value": unsigned(16),
+  }),
+  "wait": data.StructLayout({
+    "always_1": unsigned(1),
+    "hp": unsigned(7),
+    "vp": unsigned(8),
+    "always_0": unsigned(1),
+    "he": unsigned(7),
+    "ve": unsigned(7),
+    "bfd": unsigned(1),
+  }),
+})
 
 #
 # Copper
@@ -53,7 +73,7 @@ class Copper(Elaboratable):
     m = Module()
 
     pc = Signal(19)
-    ir = Signal(32)
+    ir = Signal(InstrLayout)
     location1 = Signal(19)
     location2 = Signal(19)
     enabled = Signal() # XXX: Does not really exist in real HW
@@ -72,7 +92,7 @@ class Copper(Elaboratable):
           m.d.comb += self.o_chip_ram_req.eq(1)
           with m.If(self.i_chip_ram_ack):
             m.d.sync += [
-              ir[0:16].eq(self.i_chip_ram_data),
+              ir.raw[0:16].eq(self.i_chip_ram_data),
               pc.eq(pc + 1),
               state.eq(State.FETCH2),
             ]
@@ -80,23 +100,25 @@ class Copper(Elaboratable):
           m.d.comb += self.o_chip_ram_req.eq(1)
           with m.If(self.i_chip_ram_ack):
             m.d.sync += [
-              ir[16:32].eq(self.i_chip_ram_data),
+              ir.raw[16:32].eq(self.i_chip_ram_data),
               pc.eq(pc + 1),
               state.eq(State.EXECUTE),
             ]
         with m.Case(State.EXECUTE):
-          with m.If(ir[0] == 0): # MOVE
+          with m.If(ir.move.always_0 == 0): # MOVE
             m.d.comb += [
-              self.o_chip_reg_addr.eq(Cat(C(0, 1), ir[1:9])),
-              self.o_chip_reg_data.eq(ir[16:32]),
+              self.o_chip_reg_addr.eq(Cat(C(0, 1), ir.move.reg)),
+              self.o_chip_reg_data.eq(ir.move.value),
               self.o_chip_reg_wen.eq(1),
             ]
             m.d.sync += state.eq(State.FETCH1)
-          with m.Elif((ir[0] == 1) & (ir[16] == 0)): # WAIT
-            #with m.If(((self.i_vpos & ir[24:31]) >= ir[8:16]) & ((self.i_hpos & ir[17:24]) >= ir[1:8])):
-            with m.If((self.i_vpos >= ir[8:16]) & (ir[24:31] != 0)):
+          with m.Elif((ir.wait.always_1 == 1) & (ir.wait.always_0 == 0)): # WAIT
+            masked_vpos = (self.i_vpos & Cat(ir.wait.ve, C(1, 1))) # MSB cannot be masked
+            masked_hpos = (self.i_hpos[2:] & ir.wait.he) # Two LSB not used in comparison
+            with m.If((masked_vpos > ir.wait.vp) |
+                      ((masked_vpos == ir.wait.vp) & (masked_hpos >= ir.wait.hp))):
               m.d.sync += state.eq(State.FETCH1)
-          with m.Elif((ir[0] == 1) & (ir[16] == 1)): # SKIP
+          with m.Elif((ir.raw[0] == 1) & (ir.raw[16] == 1)): # SKIP
             pass
 
     # Register access
