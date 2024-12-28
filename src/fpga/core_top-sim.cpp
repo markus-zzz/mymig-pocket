@@ -22,7 +22,6 @@
 
 #include "Vcore_top.h"
 #include "Vcore_top_core_top.h"
-#include "Vcore_top_spram__A10_D8.h"
 #include "verilated.h"
 #include "verilated_fst_c.h"
 #include <assert.h>
