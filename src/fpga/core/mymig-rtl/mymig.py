@@ -61,16 +61,18 @@ class MyMig(Elaboratable):
 
     m.submodules.u_video = u_video = VideoTiming()
     m.submodules.u_copper = u_copper = Copper()
+    u_sprites = []
+    for idx in range(8):
+      sprite = Sprite(REG_SPR0POS + idx * (REG_SPR1POS-REG_SPR0POS))
+      m.submodules['sprite_{}'.format(idx)] = sprite
+      u_sprites.append(sprite)
+
 
     chip_reg_addr = Signal(9)
     chip_reg_rdata = Signal(16)
     chip_reg_wdata = Signal(16)
     chip_reg_wen = Signal()
 
-
-    #
-    # Chip RAM arbitration - begin
-    #
     m.d.comb += [
       u_copper.i_chip_ram_data.eq(self.i_chip_ram_data),
       u_copper.i_vsync.eq(u_video.o_vsync),
@@ -80,6 +82,18 @@ class MyMig(Elaboratable):
       u_copper.i_chip_reg_data.eq(chip_reg_wdata),
       u_copper.i_chip_reg_wen.eq(chip_reg_wen),
     ]
+    for sprite in u_sprites:
+      m.d.comb += [
+        sprite.i_chip_reg_addr.eq(chip_reg_addr),
+        sprite.i_chip_reg_data.eq(chip_reg_wdata),
+        sprite.i_chip_reg_wen.eq(chip_reg_wen),
+        sprite.i_hpos.eq(u_video.o_hpos),
+        sprite.i_vpos.eq(u_video.o_vpos),
+      ]
+
+    #
+    # Chip RAM arbitration - begin
+    #
     with m.If(u_copper.o_chip_ram_req): # Copper (R)
       m.d.comb += [
         self.o_chip_ram_addr.eq(u_copper.o_chip_ram_addr),
@@ -107,6 +121,22 @@ class MyMig(Elaboratable):
     m.d.comb += color.eq(0) # Default background color
 
     # XXX: Sprites and Playfields to override color
+    # XXX: Sprite priority is actually opposite order (0 is highest)
+    for idx in range(0, 8, 2):
+      esprite = u_sprites[idx] # Even sprite
+      osprite = u_sprites[idx+1] # Odd sprite
+
+      with m.If(osprite.o_attach): # Sprite in attach mode
+        acolor = Signal(4, name='acolor_{}_{}'.format(idx, idx+1))
+        m.d.comb += acolor.eq(Cat(esprite.o_color, osprite.o_color))
+        with m.If(sprite.o_attach & (acolor != 0)):
+          m.d.comb += color.eq(acolor + 16)
+
+      with m.Else(): # Sprite in indepedent mode
+        with m.If(esprite.o_color != 0):
+          m.d.comb += color.eq(esprite.o_color + 16 + (idx >> 1) * 4)
+        with m.If(osprite.o_color != 0):
+          m.d.comb += color.eq(osprite.o_color + 16 + (idx >> 1) * 4)
 
     #
     # Chip REG arbitration - begin

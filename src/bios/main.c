@@ -32,12 +32,20 @@ volatile uint16_t *color01 = (volatile uint16_t *)0xffdff182;
 volatile uint16_t *color02 = (volatile uint16_t *)0xffdff184;
 volatile uint16_t *color03 = (volatile uint16_t *)0xffdff186;
 
+volatile uint16_t *color19 = (volatile uint16_t *)0xffdff1a6;
+
+
 volatile uint16_t *cop1lch = (volatile uint16_t *)0xffdff080;
 volatile uint16_t *cop1lcl = (volatile uint16_t *)0xffdff082;
 volatile uint16_t *cop2lch = (volatile uint16_t *)0xffdff084;
 volatile uint16_t *cop2lcl = (volatile uint16_t *)0xffdff086;
 volatile uint16_t *copjmp1 = (volatile uint16_t *)0xffdff088;
 volatile uint16_t *copjmp2 = (volatile uint16_t *)0xffdff08A;
+
+volatile uint16_t *spr0pos = (volatile uint16_t *)0xffdff140;
+volatile uint16_t *spr0ctl = (volatile uint16_t *)0xffdff142;
+volatile uint16_t *spr0data =(volatile uint16_t *)0xffdff144;
+volatile uint16_t *spr0datb =(volatile uint16_t *)0xffdff146;
 
 volatile uint16_t *copper_move(volatile uint16_t *instr_addr, uint16_t reg,
                                uint16_t data) {
@@ -81,6 +89,13 @@ int main(void) {
   *cop1lcl = 0x100;
 
   *copjmp1 = 0;
+
+  *color19 = 0xfff;
+
+  *spr0pos = 0x8284;
+  *spr0ctl = 0xff00;
+  *spr0data = 0xffff;
+  *spr0datb = 0xffff;
 
   return 0;
 }

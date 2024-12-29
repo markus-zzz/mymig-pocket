@@ -28,7 +28,7 @@ InstrLayout = data.UnionLayout({
   "move": data.StructLayout({
     "always_0": unsigned(1),
     "reg": unsigned(8),
-    "reserved": unsigned(7),
+    "_1": unsigned(7),
     "value": unsigned(16),
   }),
   "wait": data.StructLayout({
