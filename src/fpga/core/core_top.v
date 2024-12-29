@@ -531,7 +531,7 @@ module core_top (
   sprom #(
       .aw(11),
       .dw(32),
-      .MEM_INIT_FILE("bios.vh")
+      .MEM_INIT_FILE("memory.vh")
   ) u_rom (
       .clk (clk_8mhz),
       .rst (rst),

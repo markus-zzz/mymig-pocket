@@ -158,6 +158,10 @@ irq_mask:
 	picorv32_maskirq_insn(zero, a0)
   ret
 
+.weak irq
+irq:
+  ret
+
 .bss
 .balign 0x4
 irq_regs:

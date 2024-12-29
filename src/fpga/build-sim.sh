@@ -3,7 +3,7 @@
 set -e
 set -x
 
-pushd ../bios
+pushd ../sw
 make clean
 make
 popd

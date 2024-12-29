@@ -10,7 +10,7 @@ VERSION=$1
 rm -f MyMig-Pocket.zip
 rm -rf ${STAGING}
 
-pushd src/bios
+pushd src/sw
 make clean
 make
 popd
