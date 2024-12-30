@@ -112,6 +112,22 @@
 #define SPR7DATA ((volatile uint16_t *)(CHIP_REG + 0x17c))
 #define SPR7DATB ((volatile uint16_t *)(CHIP_REG + 0x17e))
 
+struct SPR {
+  uint16_t start_h;
+  uint16_t start_v;
+  uint16_t stop_v;
+  uint8_t attach;
+};
+
+static inline uint16_t sprpos(const struct SPR *spr) {
+  return ((spr->start_v & 0xff) << 8) | ((spr->start_h >> 1) & 0xff);
+}
+
+static inline uint16_t sprctl(const struct SPR *spr) {
+  return ((spr->stop_v & 0xff) << 8) | ((spr->attach & 0x1) << 7) |
+         (((spr->start_v >> 8) & 0x1) << 2) |
+         (((spr->stop_v >> 8) & 0x1) << 1) | (spr->start_h & 0x1);
+}
 
 extern volatile uint32_t timer_ticks;
 

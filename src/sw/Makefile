@@ -3,7 +3,7 @@ OBJS_COMMON = start.o
 all: tests/copper-001.vh tests/sprite-001.vh
 
 %.o: %.c
-	clang --target=riscv32 -march=rv32imc -std=c99 -I. -O3 -Os -fno-inline -mno-relax -Wall -Werror -c $< -o $@
+	clang --target=riscv32 -march=rv32imc -std=c99 -I. -O3 -Os -mno-relax -Wall -Werror -c $< -o $@
 
 %.o: %.S
 	clang --target=riscv32 -march=rv32imc -mno-relax -Wall -Werror -c $< -o $@

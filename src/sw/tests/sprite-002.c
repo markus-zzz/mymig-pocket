@@ -22,19 +22,19 @@
 
 int main(void) {
 
+  // Tests attach mode for 16 colors
+
   *COLOR17 = 0xf00;
   *COLOR18 = 0x0f0;
   *COLOR19 = 0x00f;
 
-  struct SPR spr0 = {.start_h = 145, .start_v = 150, .stop_v = 180, .attach = 0};
-  *SPR0POS = sprpos(&spr0);
-  *SPR0CTL = sprctl(&spr0);
+  *SPR0POS = 0x8284;
+  *SPR0CTL = 0xdd00;
   *SPR0DATA = 0xf00f;
   *SPR0DATB = 0x00ff;
 
-  struct SPR spr1 = {.start_h = 145, .start_v = 130, .stop_v = 170, .attach = 0};
-  *SPR1POS = sprpos(&spr1);
-  *SPR1CTL = sprctl(&spr1);
+  *SPR1POS = 0xa284;
+  *SPR1CTL = 0xff00;
   *SPR1DATA = 0x0f0f;
   *SPR1DATB = 0x00ff;
 
