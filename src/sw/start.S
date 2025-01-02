@@ -126,18 +126,6 @@ bss_clear_loop:
   addi x26, x26, 1
   j bss_clear_loop
 bss_clear_done:
-  // Initialize .data
-  la x26, _idata_start
-  la x27, _data_start
-  la x28, _data_end
-data_init_loop:
-  beq x27, x28, data_init_done
-  lb x10, 0(x26)
-  sb x10, 0(x27)
-  addi x26, x26, 1
-  addi x27, x27, 1
-  j data_init_loop
-data_init_done:
   // Setup stack
   la    sp, __stacktop
   // Call main()

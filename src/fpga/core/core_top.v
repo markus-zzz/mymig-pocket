@@ -18,7 +18,6 @@ module core_top (
     input wire clk_74a,  // mainclk1
     input wire clk_74b,  // mainclk1
 `ifdef __VERILATOR__
-    input wire reset_n,
     input wire clk_32mhz,
 `endif
 
@@ -244,7 +243,7 @@ module core_top (
   assign cart_tran_bank2_dir     = 1'b0;
   assign cart_tran_bank1         = 8'hzz;
   assign cart_tran_bank1_dir     = 1'b0;
-  assign cart_tran_bank0         = 4'hf;
+  // assign cart_tran_bank0         = 4'hf;
   assign cart_tran_bank0_dir     = 1'b1;
   assign cart_tran_pin30         = 1'b0;  // reset or cs2, we let the hw control it by itself
   assign cart_tran_pin30_dir     = 1'bz;
@@ -311,9 +310,7 @@ module core_top (
   //
   // host/target command handler
   //
-`ifndef __VERILATOR__
   wire reset_n;  // driven by host commands, can be used as core-wide reset
-`endif
   wire [31:0] cmd_bridge_rd_data;
 
   // bridge host commands
@@ -328,9 +325,7 @@ module core_top (
   // synchronous to clk_74a
   core_bridge_cmd icb (
       .clk                 (clk_74a),
-`ifndef __VERILATOR__
       .reset_n             (reset_n),
-`endif
       .bridge_endian_little(bridge_endian_little),
       .bridge_addr         (bridge_addr),
       .bridge_rd           (bridge_rd),
@@ -462,7 +457,7 @@ module core_top (
   wire [31:0] cpu_mem_wdata;
   wire [3:0] cpu_mem_wstrb;
   reg [31:0] cpu_mem_rdata;
-  wire [31:0] ram_rdata, rom_rdata;
+  wire [31:0] ram_rdata;
 
   wire [31:0] ram_addr;
   wire [31:0] ram_wdata;
@@ -477,8 +472,7 @@ module core_top (
 
   always @* begin
     casex (cpu_mem_addr)
-      32'h0xxx_xxxx: cpu_mem_rdata = rom_rdata;
-      32'h1xxx_xxxx: cpu_mem_rdata = ram_rdata;
+      32'h0xxx_xxxx: cpu_mem_rdata = ram_rdata;
       32'h2000_0000: cpu_mem_rdata = cont1_key_s;
       32'h2000_0004: cpu_mem_rdata = cont2_key_s;
       32'h2000_0008: cpu_mem_rdata = cont3_key_s;
@@ -505,14 +499,12 @@ module core_top (
   // well as the related clk_32mhz domain).
   wire rst;
   synch_3 s_reset_n (~reset_n, rst, clk_8mhz);
-  //assign rst = ~reset_n;
 
   always @(posedge clk_8mhz) begin
     if (rst) cpu_mem_ready <= 0;
     else begin
       casex (cpu_mem_addr)
         32'h0xxx_xxxx: cpu_mem_ready <= ~cpu_mem_ready & cpu_mem_valid;
-        32'h1xxx_xxxx: cpu_mem_ready <= ~cpu_mem_ready & cpu_mem_valid;
         32'h2xxx_xxxx: cpu_mem_ready <= ~cpu_mem_ready & cpu_mem_valid;
         32'h3xxx_xxxx: cpu_mem_ready <= ~cpu_mem_ready & cpu_mem_valid;
         32'h4xxx_xxxx: cpu_mem_ready <= bridge_ack_pulse;
@@ -527,36 +519,57 @@ module core_top (
     end
   end
 
-  // ROM - CPU code.
-  sprom #(
-      .aw(11),
-      .dw(32),
-      .MEM_INIT_FILE("memory.vh")
-  ) u_rom (
-      .clk (clk_8mhz),
-      .rst (rst),
-      .ce  (cpu_mem_valid && cpu_mem_addr[31:28] == 4'h0),
-      .oe  (1'b1),
-      .addr(cpu_mem_addr[31:2]),
-      .do  (rom_rdata)
+  // The following signals are in clk_74a domain
+  reg bridge_wr_req;
+  wire bridge_wr_ack;
+  reg [31:0] bridge_addr_r;
+  reg [31:0] bridge_wr_data_r;
+
+  // Write pulse synchronized to clk_8mhz domain
+  wire bridge_wr_pulse;
+
+  synch_3 s_bridge_wr (
+      .i(bridge_wr_req),
+      .rise(bridge_wr_pulse),
+      .clk(clk_8mhz)
   );
 
-  // RAM - shared between CPU and OSD. OSD has priority.
+  synch_3 s_bridge_wr2 (
+      .i(bridge_wr_pulse),
+      .rise(bridge_wr_ack),
+      .clk(clk_74a)
+  );
+
+  always @(posedge clk_74a) begin
+    if (bridge_wr) begin
+      bridge_wr_req <= 1;
+      bridge_addr_r <= bridge_addr;
+      bridge_wr_data_r <= {bridge_wr_data[7:0], bridge_wr_data[15:8], bridge_wr_data[23:16], bridge_wr_data[31:24]};
+    end
+    else if (bridge_wr_ack) begin
+      bridge_wr_req <= 0;
+    end
+  end
+
+  wire bridge_wr_access;
+  assign bridge_wr_access = bridge_wr_pulse && bridge_addr_r[31:28] == 4'h5;
+
+  // 128KB CPU RAM
   genvar gi;
   generate
     for (gi = 0; gi < 4; gi = gi + 1) begin : ram
       spram #(
-          .aw(10),
+          .aw(15),
           .dw(8)
       ) u_ram (
           .clk (clk_8mhz),
-          .rst (rst),
-          .ce  (cpu_mem_valid && cpu_mem_addr[31:28] == 4'h1),
+          .rst (1'b0),
+          .ce  (bridge_wr_access || (cpu_mem_valid && cpu_mem_addr[31:28] == 4'h0)),
           .oe  (1'b1),
-          .addr(ram_addr[31:2]),
+          .addr(bridge_wr_access ? bridge_addr_r[31:2] : ram_addr[31:2]),
           .do  (ram_rdata[(gi+1)*8-1:gi*8]),
-          .di  (ram_wdata[(gi+1)*8-1:gi*8]),
-          .we  (ram_wstrb[gi])
+          .di  (bridge_wr_access ? bridge_wr_data_r[(gi+1)*8-1:gi*8] : ram_wdata[(gi+1)*8-1:gi*8]),
+          .we  (bridge_wr_access ? 1'b1 : ram_wstrb[gi])
       );
     end
   endgenerate
@@ -662,6 +675,7 @@ module core_top (
     .o_chip_ram_we(chip_ram_we)
   );
 
+  // 128KB CHIP RAM
   spram #(
       .aw(16),
       .dw(16)
@@ -674,6 +688,22 @@ module core_top (
       .do  (chip_ram_rdata),
       .di  (chip_ram_wdata),
       .we  (chip_ram_we)
+  );
+
+  wire uart_tx;
+  assign cart_tran_bank0[6]  = uart_tx;
+  ila_simple #(
+    .WIDTH(72),
+    .DEPTH(9),
+    .CLK_FREQ(8e6)
+  ) u_ila(
+    .clk(clk_8mhz),
+    .rst(~pll_core_locked),
+//    .i_trig(cpu_mem_valid),
+//    .i_sample({cpu_mem_rdata, cpu_mem_addr}),
+    .i_trig(bridge_wr_pulse),
+    .i_sample({{8{bridge_wr_pulse}}, bridge_wr_data_r, bridge_addr_r}),
+    .o_uart_tx(uart_tx)
   );
 
 endmodule

@@ -25,6 +25,7 @@
 #include "verilated.h"
 #include "verilated_fst_c.h"
 #include <assert.h>
+#include <byteswap.h>
 #include <fstream>
 #include <functional>
 #include <gtk/gtk.h>
@@ -38,6 +39,7 @@ static uint64_t g_ticks = 0;
 static uint32_t g_frame_idx = 0;
 
 static std::unique_ptr<Vcore_top> dut;
+std::ifstream binstream;
 
 using Memory = std::array<uint8_t, 0x10000>;
 
@@ -158,12 +160,45 @@ public:
     dut->bridge_wr_data = 0;
 
     switch (bridge_state) {
-    case 0: // Wait for reset to release
-      if (dut->reset_n) {
+    case 5000:
+      dut->bridge_addr = 0xF8000000;
+      dut->bridge_wr = 1;
+      dut->bridge_wr_data = 0x434D0010; // Reset Enter
+      bridge_state = 5001;
+      break;
+    case 5001:
+      bridge_state = 5002;
+      break;
+    case 5002:
+      bridge_state = 5003;
+      break;
+    case 5003:
+      if (!binstream.eof()) {
+        dut->bridge_addr = 0x50000000 + binstream.tellg();
+        binstream.read(reinterpret_cast<char *>(&dut->bridge_wr_data), 4);
+        dut->bridge_wr_data = bswap_32(dut->bridge_wr_data);
+        dut->bridge_wr = 1;
         cntr = 0;
-        ds_it = dataslots.begin();
-        bridge_state = 100;
+        bridge_state = 5004;
+      } else {
+        bridge_state = 5005;
       }
+      break;
+    case 5004:
+      if (cntr++ > 8) {
+        bridge_state = 5003;
+      }
+      break;
+    case 5005:
+      dut->bridge_addr = 0xF8000000;
+      dut->bridge_wr = 1;
+      dut->bridge_wr_data = 0x434D0011; // Reset Exit
+      bridge_state = 0;
+      break;
+    case 0: // Get started
+      cntr = 0;
+      ds_it = dataslots.begin();
+      bridge_state = 100;
       break;
     case 100: // Write Data Slot Size table (slot id)
       if (ds_it == dataslots.end()) {
@@ -290,7 +325,7 @@ public:
   void Finalize() { updated_dataslots_iter = updated_dataslots.begin(); }
 
 private:
-  int bridge_state = 0;
+  int bridge_state = 5000;
   uint32_t ds_read_slot_id;
   uint32_t ds_read_slot_offset;
   uint32_t ds_read_bridge_address;
@@ -311,11 +346,13 @@ int main(int argc, char *argv[]) {
   uint32_t exit_frame = 0;
   bool dump_video = false;
 
+  std::string bin_path;
   std::string trace_path;
   std::vector<std::string> trace_modules;
   uint32_t trace_begin_frame = 0;
 
   CLI::App app{"Verilator based MyMig-pocket simulator"};
+  app.add_option("--bin", bin_path, "Load CPU RAM with .bin file");
   app.add_flag("--dump-video", dump_video, "Dump video output as .png");
   app.add_option("--exit-frame", exit_frame, "Exit frame");
   app.add_option("--trace", trace_path, ".fst trace output");
@@ -336,7 +373,9 @@ int main(int argc, char *argv[]) {
   // Bridge mockup - always present
   //
   BridgeHandler bridge;
-
+  if (!bin_path.empty()) {
+    binstream.open(bin_path, std::ios::in | std::ios::binary);
+  }
   bridge.Finalize();
 
   std::unique_ptr<TraceRTL> trace_rtl;
@@ -350,15 +389,9 @@ int main(int argc, char *argv[]) {
     framedumper = std::make_unique<FrameDumper>();
   }
 
-  dut->reset_n = 0;
   dut->eval();
 
-  unsigned reset_cntr = 0;
   while (!Verilated::gotFinish()) {
-    if (reset_cntr++ > 320) {
-      dut->reset_n = 1;
-    }
-
 
     dut->clk_32mhz = !dut->clk_32mhz;
     if (g_ticks % 4 == 0) {

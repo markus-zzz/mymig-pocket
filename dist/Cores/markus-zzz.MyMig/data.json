@@ -2,6 +2,17 @@
     "data": {
         "magic": "APF_VER_1",
         "data_slots": [
+    {
+        "name": "memory BIN",
+        "id": "0",
+        "required": true,
+        "deferload": false,
+        "parameters": 73,
+        "filename": "",
+        "extensions": ["bin"],
+        "size_maximum": 131072,
+        "address": "0x50000000"
+    }
     ]
     }
 }
