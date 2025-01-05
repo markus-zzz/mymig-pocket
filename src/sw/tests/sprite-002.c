@@ -20,23 +20,53 @@
 
 #include "bios.h"
 
-int main(void) {
+// Test sprite dma channels
 
-  // Tests attach mode for 16 colors
+int main(void) {
+  uint16_t *chip_ram = (uint16_t *)CHIP_RAM;
 
   *COLOR17 = 0xf00;
   *COLOR18 = 0x0f0;
   *COLOR19 = 0x00f;
 
-  *SPR0POS = 0x8284;
-  *SPR0CTL = 0xdd00;
-  *SPR0DATA = 0xf00f;
-  *SPR0DATB = 0x00ff;
+  uint16_t *p = &chip_ram[0x200];
 
-  *SPR1POS = 0xa284;
-  *SPR1CTL = 0xff00;
-  *SPR1DATA = 0x0f0f;
-  *SPR1DATB = 0x00ff;
+  // Sprite #1 in DMA list
+  {
+    struct SPR spr0 = {.start_h = 145, .start_v = 150, .stop_v = 153, .attach = 0};
+    *p++ = sprpos(&spr0);
+    *p++ = sprctl(&spr0);
+    for (int i = 0; i < (spr0.stop_v - spr0.start_v); i++) {
+      *p++ = 0xf0f0;
+      *p++ = 0xf0f0;
+    }
+  }
+  // Sprite #2 in DMA list
+  {
+    struct SPR spr0 = {.start_h = 189, .start_v = 155, .stop_v = 168, .attach = 0};
+    *p++ = sprpos(&spr0);
+    *p++ = sprctl(&spr0);
+    for (int i = 0; i < (spr0.stop_v - spr0.start_v); i++) {
+      *p++ = 0x0000;
+      *p++ = 0xff0f;
+    }
+  }
+  // End of DMA list
+  *p++ = 0;
+  *p++ = 0;
+
+  uint16_t *q = &chip_ram[0x100];
+  // SPR0PTH = 0x0
+  q = copper_move(q, 0x120, 0x0000);
+  // SPR0PTL = 0x200
+  q = copper_move(q, 0x122, 0x0200);
+  // EOL
+  q = copper_wait(q, 0xff, 0xff, 0xff, 0xff);
+
+  *COP1LCH = 0;
+  *COP1LCL = 0x100;
+
+  *COPJMP1 = 0;
 
   return 0;
 }

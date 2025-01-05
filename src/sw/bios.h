@@ -72,6 +72,9 @@
 #define COPJMP1 ((volatile uint16_t *)(CHIP_REG + 0x088))
 #define COPJMP2 ((volatile uint16_t *)(CHIP_REG + 0x08A))
 
+#define SPR0PTH ((volatile uint16_t *)(CHIP_REG + 0x120))
+#define SPR0PTL ((volatile uint16_t *)(CHIP_REG + 0x122))
+
 #define SPR0POS ((volatile uint16_t *)(CHIP_REG + 0x140))
 #define SPR0CTL ((volatile uint16_t *)(CHIP_REG + 0x142))
 #define SPR0DATA ((volatile uint16_t *)(CHIP_REG + 0x144))
@@ -111,6 +114,7 @@
 #define SPR7CTL ((volatile uint16_t *)(CHIP_REG + 0x17a))
 #define SPR7DATA ((volatile uint16_t *)(CHIP_REG + 0x17c))
 #define SPR7DATB ((volatile uint16_t *)(CHIP_REG + 0x17e))
+
 
 struct SPR {
   uint16_t start_h;

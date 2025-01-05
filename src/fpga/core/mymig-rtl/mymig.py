@@ -19,6 +19,7 @@
 # yapf --in-place --recursive --style="{indent_width: 2, column_limit: 120}"
 
 from amaranth import *
+import enum
 from video import *
 from copper import Copper
 from chipregs import *
@@ -92,9 +93,144 @@ class MyMig(Elaboratable):
       ]
 
     #
+    # SPRxPTL and SPRxPTH registers
+    #
+    sprxpt_array = Array([Signal(20) for _ in range(8)])
+    # Generate address decode logic for writes
+    for idx, sprpt in enumerate(sprxpt_array):
+      with m.If((chip_reg_addr == (REG_SPR0PTH + idx * (REG_SPR1PTH - REG_SPR0PTH))) & chip_reg_wen):
+        m.d.sync += sprpt[16:].eq(chip_reg_wdata)
+      with m.If((chip_reg_addr == (REG_SPR0PTL + idx * (REG_SPR1PTL - REG_SPR0PTL))) & chip_reg_wen):
+        m.d.sync += sprpt[0:16].eq(chip_reg_wdata)
+      s = Signal(sprpt.shape(), name='spr{}pt'.format(idx))
+      m.d.comb += s.eq(sprpt)
+
+
+    #
+    # Graphics DMA
+    #
+    gfx_dma_chip_ram_req = Signal() # Highest prority and always granted so no need for ack
+    gfx_dma_chip_ram_addr = Signal(20)
+
+    gfx_dma_chip_reg_addr = Signal(9)
+    gfx_dma_chip_reg_wdata = Signal(16)
+    gfx_dma_chip_reg_wen = Signal()
+
+    sprite_idx = Signal(range(8))
+
+    class SpriteState(enum.Enum):
+      IDLE = 0
+      LOAD_POSCTL = 1
+      WAIT = 2
+      LOAD_DAT = 3
+    sprite_states = Array([Signal(SpriteState, reset=SpriteState.IDLE) for _ in range(8)])
+    for idx, ss in enumerate(sprite_states):
+      s = Signal(ss.shape(), name='sprite_state_{}'.format(idx))
+      m.d.comb += s.eq(ss)
+
+    with m.FSM(reset='idle') as gfx_dma_fsm:
+
+      with m.State('idle'):
+        with m.If(u_video.o_hpos == 10):
+          m.d.sync += [
+            sprite_idx.eq(0),
+          ]
+          m.next = 'prepare'
+
+      with m.State('prepare'):
+        for idx, ss in enumerate(sprite_states):
+          with m.If(sprxpt_array[idx] != 0):
+            with m.Switch(ss):
+              with m.Case(SpriteState.IDLE):
+                m.d.sync += [
+                  ss.eq(SpriteState.LOAD_POSCTL),
+                ]
+              with m.Case(SpriteState.WAIT):
+                with m.If(u_sprites[idx].o_vstart_match & ~u_sprites[idx].o_vstop_match):
+                  m.d.sync += [
+                    ss.eq(SpriteState.LOAD_DAT),
+                  ]
+              with m.Case(SpriteState.LOAD_DAT):
+                with m.If(u_sprites[idx].o_vstop_match):
+                  m.d.sync += [
+                    ss.eq(SpriteState.LOAD_POSCTL),
+                  ]
+        m.next = 'sprite_dma_0'
+
+      with m.State('sprite_dma_0'):
+        with m.If(sprite_states[sprite_idx] == SpriteState.LOAD_POSCTL):
+          m.d.comb += [
+            gfx_dma_chip_ram_req.eq(1),
+            gfx_dma_chip_ram_addr.eq(sprxpt_array[sprite_idx]),
+            gfx_dma_chip_reg_wen.eq(1),
+            gfx_dma_chip_reg_addr.eq(REG_SPR0POS + sprite_idx * (REG_SPR1POS - REG_SPR0POS)),
+            gfx_dma_chip_reg_wdata.eq(self.i_chip_ram_data),
+          ]
+        with m.If(sprite_states[sprite_idx] == SpriteState.LOAD_DAT):
+          m.d.comb += [
+            gfx_dma_chip_ram_req.eq(1),
+            gfx_dma_chip_ram_addr.eq(sprxpt_array[sprite_idx]),
+            gfx_dma_chip_reg_wen.eq(1),
+            gfx_dma_chip_reg_addr.eq(REG_SPR0DATA + sprite_idx * (REG_SPR1DATA - REG_SPR0DATA)),
+            gfx_dma_chip_reg_wdata.eq(self.i_chip_ram_data),
+          ]
+        with m.If((sprite_states[sprite_idx] == SpriteState.LOAD_POSCTL) |
+                  (sprite_states[sprite_idx] == SpriteState.LOAD_DAT)):
+          m.d.sync += [
+            sprxpt_array[sprite_idx].eq(sprxpt_array[sprite_idx] + 1),
+          ]
+        m.next = 'sprite_dma_1'
+
+      with m.State('sprite_dma_1'):
+        with m.If(sprite_states[sprite_idx] == SpriteState.LOAD_POSCTL):
+          m.d.comb += [
+            gfx_dma_chip_ram_req.eq(1),
+            gfx_dma_chip_ram_addr.eq(sprxpt_array[sprite_idx]),
+            gfx_dma_chip_reg_wen.eq(1),
+            gfx_dma_chip_reg_addr.eq(REG_SPR0CTL + sprite_idx * (REG_SPR1CTL - REG_SPR0CTL)),
+            gfx_dma_chip_reg_wdata.eq(self.i_chip_ram_data),
+          ]
+          m.d.sync += [
+            sprite_states[sprite_idx].eq(SpriteState.WAIT),
+          ]
+        with m.If(sprite_states[sprite_idx] == SpriteState.LOAD_DAT):
+          m.d.comb += [
+            gfx_dma_chip_ram_req.eq(1),
+            gfx_dma_chip_ram_addr.eq(sprxpt_array[sprite_idx]),
+            gfx_dma_chip_reg_wen.eq(1),
+            gfx_dma_chip_reg_addr.eq(REG_SPR0DATB + sprite_idx * (REG_SPR1DATB - REG_SPR0DATB)),
+            gfx_dma_chip_reg_wdata.eq(self.i_chip_ram_data),
+          ]
+        with m.If((sprite_states[sprite_idx] == SpriteState.LOAD_POSCTL) |
+                  (sprite_states[sprite_idx] == SpriteState.LOAD_DAT)):
+          m.d.sync += [
+            sprxpt_array[sprite_idx].eq(sprxpt_array[sprite_idx] + 1),
+          ]
+        m.d.sync += [
+          sprite_idx.eq(sprite_idx + 1),
+        ]
+        with m.If(sprite_idx == 7):
+          m.next = 'idle'
+        with m.Else():
+          m.next = 'sprite_dma_0'
+
+    # All sprites go back to IDLE on vsync
+    with m.If(u_video.o_vsync):
+      for ss in sprite_states:
+        m.d.sync += [
+          ss.eq(SpriteState.IDLE),
+        ]
+
+
+    #
     # Chip RAM arbitration - begin
     #
-    with m.If(u_copper.o_chip_ram_req): # Copper (R)
+    with m.If(gfx_dma_chip_ram_req):
+      m.d.comb += [
+        self.o_chip_ram_addr.eq(gfx_dma_chip_ram_addr),
+        # Highest prio and always granted, so no ack
+      ]
+    with m.Elif(u_copper.o_chip_ram_req): # Copper (R)
       m.d.comb += [
         self.o_chip_ram_addr.eq(u_copper.o_chip_ram_addr),
         u_copper.i_chip_ram_ack.eq(1),
@@ -110,6 +246,36 @@ class MyMig(Elaboratable):
     #
     # Chip RAM arbitration - end
     #
+
+    #
+    # Chip REG arbitration - begin
+    #
+    with m.If(gfx_dma_chip_reg_wen):
+      m.d.comb += [
+        chip_reg_addr.eq(gfx_dma_chip_reg_addr),
+        chip_reg_wdata.eq(gfx_dma_chip_reg_wdata),
+        chip_reg_wen.eq(1),
+        # Highest prio and always granted, so no ack
+      ]
+    with m.Elif(u_copper.o_chip_reg_wen):
+      m.d.comb += [
+        chip_reg_addr.eq(u_copper.o_chip_reg_addr),
+        chip_reg_wdata.eq(u_copper.o_chip_reg_data),
+        chip_reg_wen.eq(u_copper.o_chip_reg_wen),
+        u_copper.i_chip_reg_ack.eq(1),
+      ]
+    with m.If((self.i_cpu_addr[12:24] == 0xdff) & self.i_cpu_req):
+      m.d.comb += [
+        chip_reg_addr.eq(self.i_cpu_addr[0:9]),
+        chip_reg_wdata.eq(self.i_cpu_data),
+        chip_reg_wen.eq(self.i_cpu_we),
+        self.o_cpu_data.eq(chip_reg_rdata),
+        self.o_cpu_ack.eq(1),
+      ]
+    #
+    # Chip REG arbitration - end
+    #
+
 
     m.d.comb += [
       self.o_video_hsync.eq(u_video.o_hsync),
@@ -137,27 +303,6 @@ class MyMig(Elaboratable):
           m.d.comb += color.eq(esprite.o_color + 16 + (idx >> 1) * 4)
         with m.If(osprite.o_color != 0):
           m.d.comb += color.eq(osprite.o_color + 16 + (idx >> 1) * 4)
-
-    #
-    # Chip REG arbitration - begin
-    #
-    with m.If(u_copper.o_chip_reg_wen):
-      m.d.comb += [
-        chip_reg_addr.eq(u_copper.o_chip_reg_addr),
-        chip_reg_wdata.eq(u_copper.o_chip_reg_data),
-        chip_reg_wen.eq(u_copper.o_chip_reg_wen),
-      ]
-    with m.If((self.i_cpu_addr[12:24] == 0xdff) & self.i_cpu_req):
-      m.d.comb += [
-        chip_reg_addr.eq(self.i_cpu_addr[0:9]),
-        chip_reg_wdata.eq(self.i_cpu_data),
-        chip_reg_wen.eq(self.i_cpu_we),
-        self.o_cpu_data.eq(chip_reg_rdata),
-        self.o_cpu_ack.eq(1),
-      ]
-    #
-    # Chip REG arbitration - end
-    #
 
     # Registers COLOR00-COLOR31
     color_palette = Array([Signal(12) for _ in range(32)])

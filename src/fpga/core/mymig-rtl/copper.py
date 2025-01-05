@@ -58,6 +58,7 @@ class Copper(Elaboratable):
     self.o_chip_reg_addr = Signal(9)
     self.o_chip_reg_data = Signal(16)
     self.o_chip_reg_wen = Signal()
+    self.i_chip_reg_ack = Signal()
 
     # Chip reg write access (ingress)
     self.i_chip_reg_addr = Signal(8)
@@ -111,7 +112,8 @@ class Copper(Elaboratable):
               self.o_chip_reg_data.eq(ir.move.value),
               self.o_chip_reg_wen.eq(1),
             ]
-            m.d.sync += state.eq(State.FETCH1)
+            with m.If(self.i_chip_reg_ack):
+              m.d.sync += state.eq(State.FETCH1)
           with m.Elif((ir.wait.always_1 == 1) & (ir.wait.always_0 == 0)): # WAIT
             masked_vpos = (self.i_vpos & Cat(ir.wait.ve, C(1, 1))) # MSB cannot be masked
             masked_hpos = (self.i_hpos[2:] & ir.wait.he) # Two LSB not used in comparison
