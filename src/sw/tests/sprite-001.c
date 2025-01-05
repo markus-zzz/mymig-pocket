@@ -22,21 +22,23 @@
 
 int main(void) {
 
-  *COLOR17 = 0xf00;
-  *COLOR18 = 0x0f0;
-  *COLOR19 = 0x00f;
+  *CHIP_REG(COLOR17) = 0xf00;
+  *CHIP_REG(COLOR18) = 0x0f0;
+  *CHIP_REG(COLOR19) = 0x00f;
 
-  struct SPR spr0 = {.start_h = 145, .start_v = 150, .stop_v = 180, .attach = 0};
-  *SPR0POS = sprpos(&spr0);
-  *SPR0CTL = sprctl(&spr0);
-  *SPR0DATA = 0xf00f;
-  *SPR0DATB = 0x00ff;
+  struct SPR spr0 = {
+      .start_h = 145, .start_v = 150, .stop_v = 180, .attach = 0};
+  *CHIP_REG(SPR0POS) = sprpos(&spr0);
+  *CHIP_REG(SPR0CTL) = sprctl(&spr0);
+  *CHIP_REG(SPR0DATA) = 0xf00f;
+  *CHIP_REG(SPR0DATB) = 0x00ff;
 
-  struct SPR spr1 = {.start_h = 145, .start_v = 130, .stop_v = 170, .attach = 0};
-  *SPR1POS = sprpos(&spr1);
-  *SPR1CTL = sprctl(&spr1);
-  *SPR1DATA = 0x0f0f;
-  *SPR1DATB = 0x00ff;
+  struct SPR spr1 = {
+      .start_h = 145, .start_v = 130, .stop_v = 170, .attach = 0};
+  *CHIP_REG(SPR1POS) = sprpos(&spr1);
+  *CHIP_REG(SPR1CTL) = sprctl(&spr1);
+  *CHIP_REG(SPR1DATA) = 0x0f0f;
+  *CHIP_REG(SPR1DATB) = 0x00ff;
 
   return 0;
 }

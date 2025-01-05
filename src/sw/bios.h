@@ -21,6 +21,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "chipregs.h"
 
 #define NULL ((void *)0)
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -30,91 +31,7 @@
 #define IRQ_DISABLE() irq_mask(-1)
 
 #define CHIP_RAM (volatile uint16_t *)0xff000000
-#define CHIP_REG 0xffdff000
-
-#define COLOR00 ((volatile uint16_t *)(CHIP_REG + 0x180))
-#define COLOR01 ((volatile uint16_t *)(CHIP_REG + 0x182))
-#define COLOR02 ((volatile uint16_t *)(CHIP_REG + 0x184))
-#define COLOR03 ((volatile uint16_t *)(CHIP_REG + 0x186))
-#define COLOR04 ((volatile uint16_t *)(CHIP_REG + 0x188))
-#define COLOR05 ((volatile uint16_t *)(CHIP_REG + 0x18a))
-#define COLOR06 ((volatile uint16_t *)(CHIP_REG + 0x18c))
-#define COLOR07 ((volatile uint16_t *)(CHIP_REG + 0x18e))
-#define COLOR08 ((volatile uint16_t *)(CHIP_REG + 0x190))
-#define COLOR09 ((volatile uint16_t *)(CHIP_REG + 0x192))
-#define COLOR10 ((volatile uint16_t *)(CHIP_REG + 0x194))
-#define COLOR11 ((volatile uint16_t *)(CHIP_REG + 0x196))
-#define COLOR12 ((volatile uint16_t *)(CHIP_REG + 0x198))
-#define COLOR13 ((volatile uint16_t *)(CHIP_REG + 0x19a))
-#define COLOR14 ((volatile uint16_t *)(CHIP_REG + 0x19c))
-#define COLOR15 ((volatile uint16_t *)(CHIP_REG + 0x19e))
-#define COLOR16 ((volatile uint16_t *)(CHIP_REG + 0x1a0))
-#define COLOR17 ((volatile uint16_t *)(CHIP_REG + 0x1a2))
-#define COLOR18 ((volatile uint16_t *)(CHIP_REG + 0x1a4))
-#define COLOR19 ((volatile uint16_t *)(CHIP_REG + 0x1a6))
-#define COLOR20 ((volatile uint16_t *)(CHIP_REG + 0x1a8))
-#define COLOR21 ((volatile uint16_t *)(CHIP_REG + 0x1aa))
-#define COLOR22 ((volatile uint16_t *)(CHIP_REG + 0x1ac))
-#define COLOR23 ((volatile uint16_t *)(CHIP_REG + 0x1ae))
-#define COLOR24 ((volatile uint16_t *)(CHIP_REG + 0x1b0))
-#define COLOR25 ((volatile uint16_t *)(CHIP_REG + 0x1b2))
-#define COLOR26 ((volatile uint16_t *)(CHIP_REG + 0x1b4))
-#define COLOR27 ((volatile uint16_t *)(CHIP_REG + 0x1b6))
-#define COLOR28 ((volatile uint16_t *)(CHIP_REG + 0x1b8))
-#define COLOR29 ((volatile uint16_t *)(CHIP_REG + 0x1ba))
-#define COLOR30 ((volatile uint16_t *)(CHIP_REG + 0x1bc))
-#define COLOR31 ((volatile uint16_t *)(CHIP_REG + 0x1be))
-
-#define COP1LCH ((volatile uint16_t *)(CHIP_REG + 0x080))
-#define COP1LCL ((volatile uint16_t *)(CHIP_REG + 0x082))
-#define COP2LCH ((volatile uint16_t *)(CHIP_REG + 0x084))
-#define COP2LCL ((volatile uint16_t *)(CHIP_REG + 0x086))
-#define COPJMP1 ((volatile uint16_t *)(CHIP_REG + 0x088))
-#define COPJMP2 ((volatile uint16_t *)(CHIP_REG + 0x08A))
-
-#define SPR0PTH ((volatile uint16_t *)(CHIP_REG + 0x120))
-#define SPR0PTL ((volatile uint16_t *)(CHIP_REG + 0x122))
-
-#define SPR0POS ((volatile uint16_t *)(CHIP_REG + 0x140))
-#define SPR0CTL ((volatile uint16_t *)(CHIP_REG + 0x142))
-#define SPR0DATA ((volatile uint16_t *)(CHIP_REG + 0x144))
-#define SPR0DATB ((volatile uint16_t *)(CHIP_REG + 0x146))
-
-#define SPR1POS ((volatile uint16_t *)(CHIP_REG + 0x148))
-#define SPR1CTL ((volatile uint16_t *)(CHIP_REG + 0x14a))
-#define SPR1DATA ((volatile uint16_t *)(CHIP_REG + 0x14c))
-#define SPR1DATB ((volatile uint16_t *)(CHIP_REG + 0x14e))
-
-#define SPR2POS ((volatile uint16_t *)(CHIP_REG + 0x150))
-#define SPR2CTL ((volatile uint16_t *)(CHIP_REG + 0x152))
-#define SPR2DATA ((volatile uint16_t *)(CHIP_REG + 0x154))
-#define SPR2DATB ((volatile uint16_t *)(CHIP_REG + 0x156))
-
-#define SPR3POS ((volatile uint16_t *)(CHIP_REG + 0x158))
-#define SPR3CTL ((volatile uint16_t *)(CHIP_REG + 0x15a))
-#define SPR3DATA ((volatile uint16_t *)(CHIP_REG + 0x15c))
-#define SPR3DATB ((volatile uint16_t *)(CHIP_REG + 0x15e))
-
-#define SPR4POS ((volatile uint16_t *)(CHIP_REG + 0x160))
-#define SPR4CTL ((volatile uint16_t *)(CHIP_REG + 0x162))
-#define SPR4DATA ((volatile uint16_t *)(CHIP_REG + 0x164))
-#define SPR4DATB ((volatile uint16_t *)(CHIP_REG + 0x166))
-
-#define SPR5POS ((volatile uint16_t *)(CHIP_REG + 0x168))
-#define SPR5CTL ((volatile uint16_t *)(CHIP_REG + 0x16a))
-#define SPR5DATA ((volatile uint16_t *)(CHIP_REG + 0x16c))
-#define SPR5DATB ((volatile uint16_t *)(CHIP_REG + 0x16e))
-
-#define SPR6POS ((volatile uint16_t *)(CHIP_REG + 0x170))
-#define SPR6CTL ((volatile uint16_t *)(CHIP_REG + 0x172))
-#define SPR6DATA ((volatile uint16_t *)(CHIP_REG + 0x174))
-#define SPR6DATB ((volatile uint16_t *)(CHIP_REG + 0x176))
-
-#define SPR7POS ((volatile uint16_t *)(CHIP_REG + 0x178))
-#define SPR7CTL ((volatile uint16_t *)(CHIP_REG + 0x17a))
-#define SPR7DATA ((volatile uint16_t *)(CHIP_REG + 0x17c))
-#define SPR7DATB ((volatile uint16_t *)(CHIP_REG + 0x17e))
-
+#define CHIP_REG(reg) ((volatile uint16_t *)(0xffdff000 + reg))
 
 struct SPR {
   uint16_t start_h;
@@ -157,17 +74,31 @@ static inline uint32_t swap32(uint32_t x) {
   return ((uint32_t)swap16(x) << 16) | ((uint32_t)swap16(x >> 16));
 }
 
-static inline uint16_t *copper_move(uint16_t *instr_addr, uint16_t reg,
-                                    uint16_t data) {
-  instr_addr[0] = ((reg & 0x1ff) >> 1) << 1;
-  instr_addr[1] = data;
-  return &instr_addr[2];
+
+struct CopperMove {
+  uint16_t reg;
+  uint16_t data;
+};
+
+static inline uint16_t copper_move_0(const struct CopperMove *cprmov) {
+  return ((cprmov->reg & 0x1ff) >> 1) << 1;
 }
 
-static inline uint16_t *copper_wait(uint16_t *instr_addr, uint8_t ve,
-                                    uint8_t vp, uint8_t he, uint8_t hp) {
-  instr_addr[0] = ((uint16_t)vp << 8) | ((uint16_t)(hp & 0x7f) << 1) | 1;
-  instr_addr[1] =
-      ((uint16_t)(ve & 0x7f) << 8) | ((uint16_t)(he & 0x7f) << 1) | 0;
-  return &instr_addr[2];
+static inline uint16_t copper_move_1(const struct CopperMove *cprmov) {
+  return cprmov->data;
+}
+
+struct CopperWait {
+  uint8_t ve;
+  uint8_t vp;
+  uint8_t he;
+  uint8_t hp;
+};
+
+static inline uint16_t copper_wait_0(const struct CopperWait *wait) {
+  return ((uint16_t)wait->vp << 8) | ((uint16_t)(wait->hp & 0x7f) << 1) | 1;
+}
+
+static inline uint16_t copper_wait_1(const struct CopperWait *wait) {
+  return ((uint16_t)(wait->ve & 0x7f) << 8) | ((uint16_t)(wait->he & 0x7f) << 1) | 0;
 }

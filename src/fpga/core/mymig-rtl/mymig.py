@@ -64,7 +64,7 @@ class MyMig(Elaboratable):
     m.submodules.u_copper = u_copper = Copper()
     u_sprites = []
     for idx in range(8):
-      sprite = Sprite(REG_SPR0POS + idx * (REG_SPR1POS-REG_SPR0POS))
+      sprite = Sprite(ChipReg.SPR0POS + idx * (ChipReg.SPR1POS-ChipReg.SPR0POS))
       m.submodules['sprite_{}'.format(idx)] = sprite
       u_sprites.append(sprite)
 
@@ -98,9 +98,9 @@ class MyMig(Elaboratable):
     sprxpt_array = Array([Signal(20) for _ in range(8)])
     # Generate address decode logic for writes
     for idx, sprpt in enumerate(sprxpt_array):
-      with m.If((chip_reg_addr == (REG_SPR0PTH + idx * (REG_SPR1PTH - REG_SPR0PTH))) & chip_reg_wen):
+      with m.If((chip_reg_addr == (ChipReg.SPR0PTH + idx * (ChipReg.SPR1PTH - ChipReg.SPR0PTH))) & chip_reg_wen):
         m.d.sync += sprpt[16:].eq(chip_reg_wdata)
-      with m.If((chip_reg_addr == (REG_SPR0PTL + idx * (REG_SPR1PTL - REG_SPR0PTL))) & chip_reg_wen):
+      with m.If((chip_reg_addr == (ChipReg.SPR0PTL + idx * (ChipReg.SPR1PTL - ChipReg.SPR0PTL))) & chip_reg_wen):
         m.d.sync += sprpt[0:16].eq(chip_reg_wdata)
       s = Signal(sprpt.shape(), name='spr{}pt'.format(idx))
       m.d.comb += s.eq(sprpt)
@@ -163,7 +163,7 @@ class MyMig(Elaboratable):
             gfx_dma_chip_ram_req.eq(1),
             gfx_dma_chip_ram_addr.eq(sprxpt_array[sprite_idx]),
             gfx_dma_chip_reg_wen.eq(1),
-            gfx_dma_chip_reg_addr.eq(REG_SPR0POS + sprite_idx * (REG_SPR1POS - REG_SPR0POS)),
+            gfx_dma_chip_reg_addr.eq(ChipReg.SPR0POS + sprite_idx * (ChipReg.SPR1POS - ChipReg.SPR0POS)),
             gfx_dma_chip_reg_wdata.eq(self.i_chip_ram_data),
           ]
         with m.If(sprite_states[sprite_idx] == SpriteState.LOAD_DAT):
@@ -171,7 +171,7 @@ class MyMig(Elaboratable):
             gfx_dma_chip_ram_req.eq(1),
             gfx_dma_chip_ram_addr.eq(sprxpt_array[sprite_idx]),
             gfx_dma_chip_reg_wen.eq(1),
-            gfx_dma_chip_reg_addr.eq(REG_SPR0DATA + sprite_idx * (REG_SPR1DATA - REG_SPR0DATA)),
+            gfx_dma_chip_reg_addr.eq(ChipReg.SPR0DATA + sprite_idx * (ChipReg.SPR1DATA - ChipReg.SPR0DATA)),
             gfx_dma_chip_reg_wdata.eq(self.i_chip_ram_data),
           ]
         with m.If((sprite_states[sprite_idx] == SpriteState.LOAD_POSCTL) |
@@ -187,7 +187,7 @@ class MyMig(Elaboratable):
             gfx_dma_chip_ram_req.eq(1),
             gfx_dma_chip_ram_addr.eq(sprxpt_array[sprite_idx]),
             gfx_dma_chip_reg_wen.eq(1),
-            gfx_dma_chip_reg_addr.eq(REG_SPR0CTL + sprite_idx * (REG_SPR1CTL - REG_SPR0CTL)),
+            gfx_dma_chip_reg_addr.eq(ChipReg.SPR0CTL + sprite_idx * (ChipReg.SPR1CTL - ChipReg.SPR0CTL)),
             gfx_dma_chip_reg_wdata.eq(self.i_chip_ram_data),
           ]
           m.d.sync += [
@@ -198,7 +198,7 @@ class MyMig(Elaboratable):
             gfx_dma_chip_ram_req.eq(1),
             gfx_dma_chip_ram_addr.eq(sprxpt_array[sprite_idx]),
             gfx_dma_chip_reg_wen.eq(1),
-            gfx_dma_chip_reg_addr.eq(REG_SPR0DATB + sprite_idx * (REG_SPR1DATB - REG_SPR0DATB)),
+            gfx_dma_chip_reg_addr.eq(ChipReg.SPR0DATB + sprite_idx * (ChipReg.SPR1DATB - ChipReg.SPR0DATB)),
             gfx_dma_chip_reg_wdata.eq(self.i_chip_ram_data),
           ]
         with m.If((sprite_states[sprite_idx] == SpriteState.LOAD_POSCTL) |
@@ -308,7 +308,7 @@ class MyMig(Elaboratable):
     color_palette = Array([Signal(12) for _ in range(32)])
     # Generate address decode logic for writes
     for idx, color_reg in enumerate(color_palette):
-      with m.If((chip_reg_addr == (REG_COLOR00 + idx * 2)) & chip_reg_wen):
+      with m.If((chip_reg_addr == (ChipReg.COLOR00 + idx * 2)) & chip_reg_wen):
         m.d.sync += color_reg.eq(chip_reg_wdata)
       s = Signal(color_reg.shape(), name='color_reg_{}'.format(idx))
       m.d.comb += s.eq(color_reg)

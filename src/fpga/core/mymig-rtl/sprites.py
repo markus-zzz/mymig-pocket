@@ -98,19 +98,19 @@ class Sprite(Elaboratable):
     # Register access
     with m.If(self.i_chip_reg_wen):
       with m.Switch(self.i_chip_reg_addr):
-        with m.Case(self.regBase + REG_SPR0POS - REG_SPR0POS):
+        with m.Case(self.regBase + ChipReg.SPR0POS - ChipReg.SPR0POS):
           m.d.sync += sprpos.as_value().eq(self.i_chip_reg_data)
-        with m.Case(self.regBase + REG_SPR0CTL - REG_SPR0POS):
+        with m.Case(self.regBase + ChipReg.SPR0CTL - ChipReg.SPR0POS):
           m.d.sync += [
             sprctl.as_value().eq(self.i_chip_reg_data),
             hcomp_en.eq(0),
           ]
-        with m.Case(self.regBase + REG_SPR0DATA - REG_SPR0POS):
+        with m.Case(self.regBase + ChipReg.SPR0DATA - ChipReg.SPR0POS):
           m.d.sync += [
             sprdata.eq(self.i_chip_reg_data),
             hcomp_en.eq(1),
           ]
-        with m.Case(self.regBase + REG_SPR0DATB - REG_SPR0POS):
+        with m.Case(self.regBase + ChipReg.SPR0DATB - ChipReg.SPR0POS):
           m.d.sync += sprdatb.eq(self.i_chip_reg_data)
 
     return m

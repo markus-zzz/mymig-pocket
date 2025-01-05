@@ -126,21 +126,21 @@ class Copper(Elaboratable):
     # Register access
     with m.If(self.i_chip_reg_wen):
       with m.Switch(self.i_chip_reg_addr):
-        with m.Case(REG_COP1LCH):
+        with m.Case(ChipReg.COP1LCH):
           m.d.sync += location1[16:19].eq(self.i_chip_reg_data)
-        with m.Case(REG_COP1LCL):
+        with m.Case(ChipReg.COP1LCL):
           m.d.sync += location1[0:16].eq(self.i_chip_reg_data)
-        with m.Case(REG_COP2LCH):
+        with m.Case(ChipReg.COP2LCH):
           m.d.sync += location2[16:19].eq(self.i_chip_reg_data)
-        with m.Case(REG_COP2LCL):
+        with m.Case(ChipReg.COP2LCL):
           m.d.sync += location2[0:16].eq(self.i_chip_reg_data)
-        with m.Case(REG_COPJMP1):
+        with m.Case(ChipReg.COPJMP1):
           m.d.sync += [
             pc.eq(location1),
             state.eq(State.FETCH1),
             enabled.eq(1),
           ]
-        with m.Case(REG_COPJMP2):
+        with m.Case(ChipReg.COPJMP2):
           m.d.sync += [
             pc.eq(location2),
             state.eq(State.FETCH1),

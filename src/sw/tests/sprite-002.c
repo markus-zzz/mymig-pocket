@@ -25,15 +25,16 @@
 int main(void) {
   uint16_t *chip_ram = (uint16_t *)CHIP_RAM;
 
-  *COLOR17 = 0xf00;
-  *COLOR18 = 0x0f0;
-  *COLOR19 = 0x00f;
+  *CHIP_REG(COLOR17) = 0xf00;
+  *CHIP_REG(COLOR18) = 0x0f0;
+  *CHIP_REG(COLOR19) = 0x00f;
 
   uint16_t *p = &chip_ram[0x200];
 
   // Sprite #1 in DMA list
   {
-    struct SPR spr0 = {.start_h = 145, .start_v = 150, .stop_v = 153, .attach = 0};
+    struct SPR spr0 = {
+        .start_h = 145, .start_v = 150, .stop_v = 153, .attach = 0};
     *p++ = sprpos(&spr0);
     *p++ = sprctl(&spr0);
     for (int i = 0; i < (spr0.stop_v - spr0.start_v); i++) {
@@ -43,7 +44,8 @@ int main(void) {
   }
   // Sprite #2 in DMA list
   {
-    struct SPR spr0 = {.start_h = 189, .start_v = 155, .stop_v = 168, .attach = 0};
+    struct SPR spr0 = {
+        .start_h = 189, .start_v = 155, .stop_v = 168, .attach = 0};
     *p++ = sprpos(&spr0);
     *p++ = sprctl(&spr0);
     for (int i = 0; i < (spr0.stop_v - spr0.start_v); i++) {
@@ -56,17 +58,28 @@ int main(void) {
   *p++ = 0;
 
   uint16_t *q = &chip_ram[0x100];
-  // SPR0PTH = 0x0
-  q = copper_move(q, 0x120, 0x0000);
-  // SPR0PTL = 0x200
-  q = copper_move(q, 0x122, 0x0200);
-  // EOL
-  q = copper_wait(q, 0xff, 0xff, 0xff, 0xff);
 
-  *COP1LCH = 0;
-  *COP1LCL = 0x100;
+  {
+    struct CopperMove move = {.reg = SPR0PTH, .data = 0x0};
+    *q++ = copper_move_0(&move);
+    *q++ = copper_move_1(&move);
+  }
+  {
+    struct CopperMove move = {.reg = SPR0PTL, .data = 0x0200};
+    *q++ = copper_move_0(&move);
+    *q++ = copper_move_1(&move);
+  }
+  {
+    struct CopperWait wait = {
+        .ve = 0xff, .vp = 0xff, .he = 0xff, .hp = 0xff}; // EOL
+    *q++ = copper_wait_0(&wait);
+    *q++ = copper_wait_1(&wait);
+  }
 
-  *COPJMP1 = 0;
+  *CHIP_REG(COP1LCH) = 0;
+  *CHIP_REG(COP1LCL) = 0x100;
+
+  *CHIP_REG(COPJMP1) = 0;
 
   return 0;
 }
