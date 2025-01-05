@@ -22,6 +22,39 @@
 
 // Test sprite dma channels
 
+#define SIZE(x) (sizeof(x) / sizeof(x[0]))
+
+const char *heart[] = {"0000000000000000",
+                       "0000000110000000",
+                       "0000012222100000",
+                       "0000000110000000",
+                       "0000000000000000",
+                       "0011211331121100",
+                       "0001111221111000",
+                       "0000011221100000",
+                       "0000000110000000",
+                       "0000000000000000",
+                       NULL};
+
+uint16_t *ascii2sprite(unsigned depth, const char *strs[], uint16_t *sprite) {
+  for (unsigned i = 0; strs[i] != NULL; i++) {
+    uint16_t shifts[4];
+    for (unsigned j = 0; j < 16; j++) {
+      int d = strs[i][j] - '0';
+      for (unsigned k = 0; k < depth; k++) {
+        shifts[k] <<= 1;
+        if (d & (1 << (depth - 1 - k))) {
+          shifts[k] |= 1;
+        }
+      }
+    }
+    for (unsigned k = 0; k < depth; k++) {
+      *sprite++ = shifts[k];
+    }
+  }
+  return sprite;
+}
+
 int main(void) {
   uint16_t *chip_ram = (uint16_t *)CHIP_RAM;
 
@@ -33,19 +66,18 @@ int main(void) {
 
   // Sprite #1 in DMA list
   {
-    struct SPR spr0 = {
-        .start_h = 145, .start_v = 150, .stop_v = 153, .attach = 0};
+    struct SPR spr0 = {.start_h = 145,
+                       .start_v = 150,
+                       .stop_v = 150 + SIZE(heart) - 1,
+                       .attach = 0};
     *p++ = sprpos(&spr0);
     *p++ = sprctl(&spr0);
-    for (int i = 0; i < (spr0.stop_v - spr0.start_v); i++) {
-      *p++ = 0xf0f0;
-      *p++ = 0xf0f0;
-    }
+    p = ascii2sprite(2, heart, p);
   }
   // Sprite #2 in DMA list
   {
     struct SPR spr0 = {
-        .start_h = 189, .start_v = 155, .stop_v = 168, .attach = 0};
+        .start_h = 189, .start_v = 165, .stop_v = 168, .attach = 0};
     *p++ = sprpos(&spr0);
     *p++ = sprctl(&spr0);
     for (int i = 0; i < (spr0.stop_v - spr0.start_v); i++) {
