@@ -24,6 +24,7 @@ from video import *
 from copper import Copper
 from chipregs import *
 from sprites import *
+from bitplanes import *
 
 #
 # MyMig
@@ -62,6 +63,7 @@ class MyMig(Elaboratable):
 
     m.submodules.u_video = u_video = VideoTiming()
     m.submodules.u_copper = u_copper = Copper()
+    m.submodules.u_bitplanes = u_bitplanes = Bitplanes()
     u_sprites = []
     for idx in range(8):
       sprite = Sprite(ChipReg.SPR0POS + idx * (ChipReg.SPR1POS-ChipReg.SPR0POS))
@@ -82,6 +84,9 @@ class MyMig(Elaboratable):
       u_copper.i_chip_reg_addr.eq(chip_reg_addr),
       u_copper.i_chip_reg_data.eq(chip_reg_wdata),
       u_copper.i_chip_reg_wen.eq(chip_reg_wen),
+      u_bitplanes.i_chip_reg_addr.eq(chip_reg_addr),
+      u_bitplanes.i_chip_reg_data.eq(chip_reg_wdata),
+      u_bitplanes.i_chip_reg_wen.eq(chip_reg_wen),
     ]
     for sprite in u_sprites:
       m.d.comb += [
@@ -285,6 +290,9 @@ class MyMig(Elaboratable):
 
     color = Signal(5)
     m.d.comb += color.eq(0) # Default background color
+
+    # XXX: Should be only if bitplanes/playfields are enabled
+    m.d.comb += color.eq(u_bitplanes.o_color)
 
     # XXX: Sprites and Playfields to override color
     # XXX: Sprite priority is actually opposite order (0 is highest)
