@@ -250,8 +250,8 @@ class MyMig(Elaboratable):
               bitplane_idx.eq(15),
             ]
             m.next = 'bitplane_dma_1'
-          with m.Elif(u_video.o_hpos == Cat(C(0,3), ddfstop.h3_h8)):
-            m.next = 'idle'
+        with m.If(u_video.o_hpos == 0): # Restart on new line
+          m.next = 'idle'
 
       with m.State('bitplane_dma_1'):
         m.d.sync += [
