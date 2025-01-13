@@ -18,9 +18,28 @@
 #
 # yapf --in-place --recursive --style="{indent_width: 2, column_limit: 120}"
 
+from amaranth import *
+from amaranth.lib import data
 import enum
 
 # From http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0060.html
+
+BPLCON0_Layout = data.StructLayout({
+  "_1": unsigned(12),
+  "bpu": unsigned(3),
+  "_2": unsigned(1),
+})
+
+DDF_Layout = data.StructLayout({
+  "_1": unsigned(2),
+  "h3_h8": unsigned(6),
+  "_2": unsigned(8),
+})
+
+DIW_Layout = data.StructLayout({
+  "h0_h7": unsigned(8),
+  "v0_v7": unsigned(8),
+})
 
 class ChipReg(enum.IntEnum):
   BLTDDAT = 0x000

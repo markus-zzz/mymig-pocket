@@ -40,14 +40,22 @@ class Bitplanes(Elaboratable):
     m = Module()
 
     bplxshift_array = Array([Signal(16) for _ in range(6)])
+    for idx, bplshift in enumerate(bplxshift_array):
+      s = Signal(bplshift.shape(), name='bpl{}shift'.format(idx))
+      m.d.comb += s.eq(bplshift)
     bplxdat_array = Array([Signal(16) for _ in range(6)])
+    for idx, bpldat in enumerate(bplxdat_array):
+      s = Signal(bpldat.shape(), name='bpl{}dat'.format(idx))
+      m.d.comb += s.eq(bpldat)
 
     for idx, bplshift in enumerate(bplxshift_array):
-      m.d.comb += [
-        self.o_color[idx-1].eq(bplshift[15]),
-      ]
       m.d.sync += [
         bplshift.eq(Cat(C(0,1), bplshift[0:15])),
+      ]
+
+    for idx, bplshift in enumerate(bplxshift_array[0:5]):
+      m.d.comb += [
+        self.o_color[idx].eq(bplshift[15]),
       ]
 
     # Generate address decode logic for writes

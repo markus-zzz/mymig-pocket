@@ -1,6 +1,6 @@
 OBJS_COMMON = start.o
 
-all: tests/copper-001.bin tests/sprite-001.bin tests/sprite-002.bin
+all: tests/bitplane-001.bin tests/copper-001.bin tests/sprite-001.bin tests/sprite-002.bin
 
 %.o: %.c
 	clang --target=riscv32 -march=rv32imc -std=c99 -I. -O3 -Os -mno-relax -Wall -Werror -c $< -o $@

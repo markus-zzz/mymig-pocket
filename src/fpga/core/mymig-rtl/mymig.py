@@ -53,9 +53,9 @@ class MyMig(Elaboratable):
     self.o_chip_ram_we = Signal()
 
     self.ports = [
-        self.o_video_rgb, self.o_video_hsync, self.o_video_vsync, self.o_video_de,
-        self.i_cpu_addr, self.i_cpu_data, self.o_cpu_data, self.i_cpu_req, self.i_cpu_we, self.o_cpu_ack,
-        self.o_chip_ram_addr, self.i_chip_ram_data, self.o_chip_ram_data, self.o_chip_ram_we,
+      self.o_video_rgb, self.o_video_hsync, self.o_video_vsync, self.o_video_de,
+      self.i_cpu_addr, self.i_cpu_data, self.o_cpu_data, self.i_cpu_req, self.i_cpu_we, self.o_cpu_ack,
+      self.o_chip_ram_addr, self.i_chip_ram_data, self.o_chip_ram_data, self.o_chip_ram_we,
     ]
 
   def elaborate(self, platform):
@@ -98,18 +98,41 @@ class MyMig(Elaboratable):
       ]
 
     #
+    # BPLCON0 register
+    #
+    bplcon0 = Signal(BPLCON0_Layout)
+    with m.If((chip_reg_addr == ChipReg.BPLCON0) & chip_reg_wen):
+      m.d.sync += bplcon0.as_value().eq(chip_reg_wdata)
+
+    #
+    # DIWSTRT and DIWSTOP registers
+    #
+    diwstrt = Signal(DIW_Layout)
+    diwstop = Signal(DIW_Layout)
+    with m.If((chip_reg_addr == ChipReg.DIWSTRT) & chip_reg_wen):
+      m.d.sync += diwstrt.as_value().eq(chip_reg_wdata)
+    with m.If((chip_reg_addr == ChipReg.DIWSTOP) & chip_reg_wen):
+      m.d.sync += diwstop.as_value().eq(chip_reg_wdata)
+
+    #
+    # DDFSTRT and DDFSTOP registers
+    #
+    ddfstrt = Signal(DDF_Layout)
+    ddfstop = Signal(DDF_Layout)
+    with m.If((chip_reg_addr == ChipReg.DDFSTRT) & chip_reg_wen):
+      m.d.sync += ddfstrt.as_value().eq(chip_reg_wdata)
+    with m.If((chip_reg_addr == ChipReg.DDFSTOP) & chip_reg_wen):
+      m.d.sync += ddfstop.as_value().eq(chip_reg_wdata)
+
+    #
+    # BPLxPTL and BPLxPTH registers
+    #
+    bplxpt_array = Array([Signal(18) for _ in range(6)])
+
+    #
     # SPRxPTL and SPRxPTH registers
     #
-    sprxpt_array = Array([Signal(20) for _ in range(8)])
-    # Generate address decode logic for writes
-    for idx, sprpt in enumerate(sprxpt_array):
-      with m.If((chip_reg_addr == (ChipReg.SPR0PTH + idx * (ChipReg.SPR1PTH - ChipReg.SPR0PTH))) & chip_reg_wen):
-        m.d.sync += sprpt[16:].eq(chip_reg_wdata)
-      with m.If((chip_reg_addr == (ChipReg.SPR0PTL + idx * (ChipReg.SPR1PTL - ChipReg.SPR0PTL))) & chip_reg_wen):
-        m.d.sync += sprpt[0:16].eq(chip_reg_wdata)
-      s = Signal(sprpt.shape(), name='spr{}pt'.format(idx))
-      m.d.comb += s.eq(sprpt)
-
+    sprxpt_array = Array([Signal(18) for _ in range(8)])
 
     #
     # Graphics DMA
@@ -122,6 +145,7 @@ class MyMig(Elaboratable):
     gfx_dma_chip_reg_wen = Signal()
 
     sprite_idx = Signal(range(8))
+    bitplane_idx = Signal(range(16))
 
     class SpriteState(enum.Enum):
       IDLE = 0
@@ -215,9 +239,37 @@ class MyMig(Elaboratable):
           sprite_idx.eq(sprite_idx + 1),
         ]
         with m.If(sprite_idx == 7):
-          m.next = 'idle'
+          m.next = 'bitplane_dma_0'
         with m.Else():
           m.next = 'sprite_dma_0'
+
+      with m.State('bitplane_dma_0'):
+        with m.If((u_video.o_vpos >= diwstrt.v0_v7) & (u_video.o_vpos < Cat(diwstop.v0_v7, C(1,1)))):
+          with m.If(u_video.o_hpos == Cat(C(0,3), ddfstrt.h3_h8)):
+            m.d.sync += [
+              bitplane_idx.eq(15),
+            ]
+            m.next = 'bitplane_dma_1'
+          with m.Elif(u_video.o_hpos == Cat(C(0,3), ddfstop.h3_h8)):
+            m.next = 'idle'
+
+      with m.State('bitplane_dma_1'):
+        m.d.sync += [
+          bitplane_idx.eq(bitplane_idx - 1),
+        ]
+        with m.If(bitplane_idx < bplcon0.bpu):
+          m.d.comb += [
+            gfx_dma_chip_ram_req.eq(1),
+            gfx_dma_chip_ram_addr.eq(bplxpt_array[bitplane_idx]),
+            gfx_dma_chip_reg_wen.eq(1),
+            gfx_dma_chip_reg_addr.eq(ChipReg.BPL1DAT + bitplane_idx * (ChipReg.BPL2DAT - ChipReg.BPL1DAT)),
+            gfx_dma_chip_reg_wdata.eq(self.i_chip_ram_data),
+          ]
+          m.d.sync += [
+            bplxpt_array[bitplane_idx].eq(bplxpt_array[bitplane_idx] + 1),
+          ]
+        with m.If(u_video.o_hpos == Cat(C(0,3), ddfstop.h3_h8)):
+          m.next = 'idle'
 
     # All sprites go back to IDLE on vsync
     with m.If(u_video.o_vsync):
@@ -225,6 +277,31 @@ class MyMig(Elaboratable):
         m.d.sync += [
           ss.eq(SpriteState.IDLE),
         ]
+
+    #
+    # BPLxPTL and BPLxPTH registers
+    #
+    # Generate address decode logic for writes
+    for idx, bplpt in enumerate(bplxpt_array):
+      with m.If((chip_reg_addr == (ChipReg.BPL1PTH + idx * (ChipReg.BPL2PTH - ChipReg.BPL1PTH))) & chip_reg_wen):
+        m.d.sync += bplpt[16:].eq(chip_reg_wdata)
+      with m.If((chip_reg_addr == (ChipReg.BPL1PTL + idx * (ChipReg.BPL2PTL - ChipReg.BPL1PTL))) & chip_reg_wen):
+        m.d.sync += bplpt[0:16].eq(chip_reg_wdata)
+      s = Signal(bplpt.shape(), name='bpl{}pt'.format(idx))
+      m.d.comb += s.eq(bplpt)
+
+    #
+    # SPRxPTL and SPRxPTH registers
+    #
+    # Generate address decode logic for writes
+    for idx, sprpt in enumerate(sprxpt_array):
+      with m.If((chip_reg_addr == (ChipReg.SPR0PTH + idx * (ChipReg.SPR1PTH - ChipReg.SPR0PTH))) & chip_reg_wen):
+        m.d.sync += sprpt[16:].eq(chip_reg_wdata)
+      with m.If((chip_reg_addr == (ChipReg.SPR0PTL + idx * (ChipReg.SPR1PTL - ChipReg.SPR0PTL))) & chip_reg_wen):
+        m.d.sync += sprpt[0:16].eq(chip_reg_wdata)
+      s = Signal(sprpt.shape(), name='spr{}pt'.format(idx))
+      m.d.comb += s.eq(sprpt)
+
 
 
     #
@@ -269,7 +346,7 @@ class MyMig(Elaboratable):
         chip_reg_wen.eq(u_copper.o_chip_reg_wen),
         u_copper.i_chip_reg_ack.eq(1),
       ]
-    with m.If((self.i_cpu_addr[12:24] == 0xdff) & self.i_cpu_req):
+    with m.Elif((self.i_cpu_addr[12:24] == 0xdff) & self.i_cpu_req):
       m.d.comb += [
         chip_reg_addr.eq(self.i_cpu_addr[0:9]),
         chip_reg_wdata.eq(self.i_cpu_data),
