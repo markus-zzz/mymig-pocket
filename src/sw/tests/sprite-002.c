@@ -91,22 +91,9 @@ int main(void) {
 
   uint16_t *q = &chip_ram[0x100];
 
-  {
-    struct CopperMove move = {.reg = SPR0PTH, .data = 0x0};
-    *q++ = copper_move_0(&move);
-    *q++ = copper_move_1(&move);
-  }
-  {
-    struct CopperMove move = {.reg = SPR0PTL, .data = 0x0200};
-    *q++ = copper_move_0(&move);
-    *q++ = copper_move_1(&move);
-  }
-  {
-    struct CopperWait wait = {
-        .ve = 0xff, .vp = 0xff, .he = 0xff, .hp = 0xff}; // EOL
-    *q++ = copper_wait_0(&wait);
-    *q++ = copper_wait_1(&wait);
-  }
+  COP_MOVE(q, .reg = SPR0PTH, .data = 0x0);
+  COP_MOVE(q, .reg = SPR0PTL, .data = 0x0200);
+  COP_WAIT(q, .ve = 0xff, .vp = 0xff, .he = 0xff, .hp = 0xff); // EOL
 
   *CHIP_REG(COP1LCH) = 0;
   *CHIP_REG(COP1LCL) = 0x100;

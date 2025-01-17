@@ -26,46 +26,22 @@ int main(void) {
 
   uint16_t *p = &chip_ram[0x100];
 
-  struct CopperMove move = {.reg = COLOR00, .data = 0x000};
-  struct CopperWait wait = {.ve = 0xff, .vp = 100, .he = 0xff, .hp = 0};
-
   // Black
-  *p++ = copper_move_0(&move);
-  *p++ = copper_move_1(&move);
+  COP_MOVE(p, .reg = COLOR00, .data = 0x000);
   // Red
-  *p++ = copper_wait_0(&wait);
-  *p++ = copper_wait_1(&wait);
-  move.data = 0xf00;
-  *p++ = copper_move_0(&move);
-  *p++ = copper_move_1(&move);
+  COP_WAIT(p, .ve = 0xff, .vp = 100, .he = 0xff, .hp = 0);
+  COP_MOVE(p, .reg = COLOR00, .data = 0xf00);
   // Green
-  wait.vp = 120;
-  *p++ = copper_wait_0(&wait);
-  *p++ = copper_wait_1(&wait);
-  move.data = 0x0f0;
-  *p++ = copper_move_0(&move);
-  *p++ = copper_move_1(&move);
+  COP_WAIT(p, .ve = 0xff, .vp = 120, .he = 0xff, .hp = 0);
+  COP_MOVE(p, .reg = COLOR00, .data = 0x0f0);
   // Blue
-  wait.vp = 140;
-  *p++ = copper_wait_0(&wait);
-  *p++ = copper_wait_1(&wait);
-  move.data = 0x00f;
-  *p++ = copper_move_0(&move);
-  *p++ = copper_move_1(&move);
+  COP_WAIT(p, .ve = 0xff, .vp = 140, .he = 0xff, .hp = 0);
+  COP_MOVE(p, .reg = COLOR00, .data = 0x00f);
   // Black
-  wait.vp = 160;
-  *p++ = copper_wait_0(&wait);
-  *p++ = copper_wait_1(&wait);
-  move.data = 0x000;
-  *p++ = copper_move_0(&move);
-  *p++ = copper_move_1(&move);
+  COP_WAIT(p, .ve = 0xff, .vp = 160, .he = 0xff, .hp = 0);
+  COP_MOVE(p, .reg = COLOR00, .data = 0x000);
   // EOL
-  wait.ve = 0xff;
-  wait.vp = 0xff;
-  wait.he = 0xff;
-  wait.hp = 0xff;
-  *p++ = copper_wait_0(&wait);
-  *p++ = copper_wait_1(&wait);
+  COP_WAIT(p, .ve = 0xff, .vp = 0xff, .he = 0xff, .hp = 0xff);
 
   *CHIP_REG(COP1LCH) = 0;
   *CHIP_REG(COP1LCL) = 0x100;

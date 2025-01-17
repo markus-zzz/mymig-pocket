@@ -33,6 +33,21 @@
 #define CHIP_RAM (volatile uint16_t *)0xff000000
 #define CHIP_REG(reg) ((volatile uint16_t *)(0xffdff000 + reg))
 
+#define COP_MOVE(ptr, ...)                                                     \
+  do {                                                                         \
+    struct CopperMove move = (struct CopperMove){__VA_ARGS__};                 \
+    *(ptr)++ = copper_move_0(&move);                                           \
+    *(ptr)++ = copper_move_1(&move);                                           \
+  } while (0)
+
+#define COP_WAIT(ptr, ...)                                                     \
+  do {                                                                         \
+    struct CopperWait wait = (struct CopperWait){__VA_ARGS__};                 \
+    *(ptr)++ = copper_wait_0(&wait);                                           \
+    *(ptr)++ = copper_wait_1(&wait);                                           \
+  } while (0)
+
+
 struct SPR {
   uint16_t start_h;
   uint16_t start_v;

@@ -22,6 +22,14 @@
 
 // Test Bitplane DMA
 
+#define BP_DIM_X 288
+
+static inline void set_pixel(uint16_t *bp, uint16_t x, uint16_t y) {
+  bp += y * BP_DIM_X / 16;
+  bp += x / 16;
+  *bp |= 1 << (15 - x % 16);
+}
+
 int main(void) {
   uint16_t *chip_ram = (uint16_t *)CHIP_RAM;
 
@@ -34,6 +42,11 @@ int main(void) {
   }
 #else
   p0[300] = p1[300] = 1;
+  for (int i = 0; i < 10; i++) {
+    for (int j = 0; j < 10; j++) {
+      set_pixel(p0, 50 + i, 50 + j);
+    }
+  }
 #endif
 
   *CHIP_REG(COLOR01) = 0xfff;
@@ -45,32 +58,11 @@ int main(void) {
 
   uint16_t *q = &chip_ram[0x100];
 
-  {
-    struct CopperMove move = {.reg = BPL1PTH, .data = 0x0};
-    *q++ = copper_move_0(&move);
-    *q++ = copper_move_1(&move);
-  }
-  {
-    struct CopperMove move = {.reg = BPL1PTL, .data = 0x1000};
-    *q++ = copper_move_0(&move);
-    *q++ = copper_move_1(&move);
-  }
-  {
-    struct CopperMove move = {.reg = BPL2PTH, .data = 0x0};
-    *q++ = copper_move_0(&move);
-    *q++ = copper_move_1(&move);
-  }
-  {
-    struct CopperMove move = {.reg = BPL2PTL, .data = 0x2000};
-    *q++ = copper_move_0(&move);
-    *q++ = copper_move_1(&move);
-  }
-  {
-    struct CopperWait wait = {
-        .ve = 0xff, .vp = 0xff, .he = 0xff, .hp = 0xff}; // EOL
-    *q++ = copper_wait_0(&wait);
-    *q++ = copper_wait_1(&wait);
-  }
+  COP_MOVE(q, .reg = BPL1PTH, .data = 0x0);
+  COP_MOVE(q, .reg = BPL1PTL, .data = 0x1000);
+  COP_MOVE(q, .reg = BPL2PTH, .data = 0x0);
+  COP_MOVE(q, .reg = BPL2PTL, .data = 0x2000);
+  COP_WAIT(q, .ve = 0xff, .vp = 0xff, .he = 0xff, .hp = 0xff); // EOL
 
   *CHIP_REG(COP1LCH) = 0;
   *CHIP_REG(COP1LCL) = 0x100;
@@ -85,4 +77,3 @@ int main(void) {
 
   return 0;
 }
-
