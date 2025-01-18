@@ -52,10 +52,14 @@ class MyMig(Elaboratable):
     self.o_chip_ram_data = Signal(16)
     self.o_chip_ram_we = Signal()
 
+    # IRQ
+    self.o_irq = Signal()
+
     self.ports = [
       self.o_video_rgb, self.o_video_hsync, self.o_video_vsync, self.o_video_de,
       self.i_cpu_addr, self.i_cpu_data, self.o_cpu_data, self.i_cpu_req, self.i_cpu_we, self.o_cpu_ack,
       self.o_chip_ram_addr, self.i_chip_ram_data, self.o_chip_ram_data, self.o_chip_ram_we,
+      self.o_irq,
     ]
 
   def elaborate(self, platform):
@@ -401,6 +405,24 @@ class MyMig(Elaboratable):
     color_rgb = Signal(12)
     m.d.comb += color_rgb.eq(color_palette[color])
     m.d.comb += self.o_video_rgb.eq(Cat(C(0,4), color_rgb[0:4], C(0,4), color_rgb[4:8], C(0,4), color_rgb[8:12]))
+
+    #
+    # INTEN and INTREQ
+    #
+    intena = Signal(15)
+    intreq = Signal(14)
+    m.d.comb += self.o_irq.eq(intena[14] & (intena & intreq).any())
+    with m.If((chip_reg_addr == ChipReg.INTENA) & chip_reg_wen):
+      with m.If(chip_reg_wdata[15]): # Set
+        m.d.sync += intena.eq(intena | chip_reg_wdata)
+      with m.Else(): # Clear
+        m.d.sync += intena.eq(intena & ~chip_reg_wdata)
+    with m.If((chip_reg_addr == ChipReg.INTREQ) & chip_reg_wen):
+      with m.If(chip_reg_wdata[15]): # Set
+        m.d.sync += intreq.eq(intreq | chip_reg_wdata)
+      with m.Else(): # Clear
+        m.d.sync += intreq.eq(intreq & ~chip_reg_wdata)
+    # HW updates have higher priority than SW updates
 
     return m
 

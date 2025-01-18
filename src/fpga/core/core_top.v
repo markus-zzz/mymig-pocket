@@ -463,6 +463,8 @@ module core_top (
   wire [31:0] ram_wdata;
   wire [3:0] ram_wstrb;
 
+  wire irq;
+
   wire [31:0] bridge_rdata;
   wire [31:0] bridge_dpram_rdata;
 
@@ -578,7 +580,8 @@ module core_top (
       .COMPRESSED_ISA(1),
       .ENABLE_IRQ(1),
       .ENABLE_MUL(1),
-      .ENABLE_DIV(1)
+      .ENABLE_DIV(1),
+      .LATCHED_IRQ(32'h0000_0003)
   ) u_cpu (
       .clk(clk_8mhz),
       .resetn(~rst),
@@ -588,7 +591,8 @@ module core_top (
       .mem_addr(cpu_mem_addr),
       .mem_wdata(cpu_mem_wdata),
       .mem_wstrb(cpu_mem_wstrb),
-      .mem_rdata(cpu_mem_rdata)
+      .mem_rdata(cpu_mem_rdata),
+      .irq({irq, 3'b000})
   );
 
 
@@ -672,7 +676,8 @@ module core_top (
     .o_chip_ram_addr(chip_ram_addr),
     .i_chip_ram_data(chip_ram_rdata),
     .o_chip_ram_data(chip_ram_wdata),
-    .o_chip_ram_we(chip_ram_we)
+    .o_chip_ram_we(chip_ram_we),
+    .o_irq(irq)
   );
 
   // 128KB CHIP RAM

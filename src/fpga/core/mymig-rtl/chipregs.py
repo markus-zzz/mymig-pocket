@@ -41,6 +41,25 @@ DIW_Layout = data.StructLayout({
   "v0_v7": unsigned(8),
 })
 
+INTREQ_Layout = data.StructLayout({
+  "tbe": unsigned(1),
+  "dskblk": unsigned(1),
+  "soft": unsigned(1),
+  "ports": unsigned(1),
+  "coper": unsigned(1),
+  "vertb": unsigned(1),
+  "blit": unsigned(1),
+  "aud0": unsigned(1),
+  "aud1": unsigned(1),
+  "aud2": unsigned(1),
+  "aud3": unsigned(1),
+  "rbf": unsigned(1),
+  "dsksyn": unsigned(1),
+  "exter": unsigned(1),
+  "inten": unsigned(1),
+  "set_clr": unsigned(1),
+})
+
 class ChipReg(enum.IntEnum):
   BLTDDAT = 0x000
 
