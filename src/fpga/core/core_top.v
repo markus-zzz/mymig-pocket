@@ -490,7 +490,7 @@ module core_top (
       32'h4xxx_xxxx: cpu_mem_rdata = bridge_rdata;
       32'h7xxx_xxxx: cpu_mem_rdata = bridge_dpram_rdata;
       32'h9xxx_xxxx: cpu_mem_rdata = dataslot_table_rd_data_cpu;
-      32'hffxx_xxxx: cpu_mem_rdata = {2{mymig_cpu_mem_rdata}};
+      32'hffxx_xxxx: cpu_mem_rdata = {2{mymig_cpu_mem_rdata_r}};
       default: cpu_mem_rdata = 0;
     endcase
   end
@@ -649,6 +649,7 @@ module core_top (
   assign video_skip = 0;
   assign video_hs = video_hs_delay[0];
 
+  reg [15:0] mymig_cpu_mem_rdata_r;
   wire [15:0] mymig_cpu_mem_rdata;
   wire mymig_cpu_ack;
 
@@ -656,6 +657,10 @@ module core_top (
   wire [15:0] chip_ram_rdata;
   wire [15:0] chip_ram_wdata;
   wire chip_ram_we;
+
+  always @(posedge clk_8mhz) begin
+    mymig_cpu_mem_rdata_r <= mymig_cpu_mem_rdata;
+  end
 
   mymig_top u_mymig(
     .clk(clk_8mhz),

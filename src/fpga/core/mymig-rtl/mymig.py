@@ -248,7 +248,7 @@ class MyMig(Elaboratable):
           m.next = 'sprite_dma_0'
 
       with m.State('bitplane_dma_0'):
-        with m.If((u_video.o_vpos >= diwstrt.v0_v7) & (u_video.o_vpos < Cat(diwstop.v0_v7, C(1,1)))):
+        with m.If((u_video.o_vpos >= diwstrt.v0_v7) & (u_video.o_vpos < diwstop.v0_v7)):
           with m.If(u_video.o_hpos == Cat(C(0,3), ddfstrt.h3_h8)):
             m.d.sync += [
               bitplane_idx.eq(15),
