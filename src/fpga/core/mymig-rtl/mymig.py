@@ -303,6 +303,7 @@ class MyMig(Elaboratable):
         m.d.sync += sprpt[16:].eq(chip_reg_wdata)
       with m.If((chip_reg_addr == (ChipReg.SPR0PTL + idx * (ChipReg.SPR1PTL - ChipReg.SPR0PTL))) & chip_reg_wen):
         m.d.sync += sprpt[0:16].eq(chip_reg_wdata)
+        m.d.sync += [sprite_states[idx].eq(SpriteState.IDLE)]
       s = Signal(sprpt.shape(), name='spr{}pt'.format(idx))
       m.d.comb += s.eq(sprpt)
 
