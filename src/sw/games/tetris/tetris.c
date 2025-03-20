@@ -360,10 +360,11 @@ int main(void) {
       piece_rot--;
     }
     struct Coord *piece = (*piece2)[piece_rot & 3];
-    if (KEYB_POSEDGE(dpad_left) && !pieceblocked(piece, piece_x - 1, piece_y)) {
+    if ((KEYB_DOWN(dpad_left) && (ticks & 0x7) == 0) &&
+        !pieceblocked(piece, piece_x - 1, piece_y)) {
       piece_x--;
     }
-    if (KEYB_POSEDGE(dpad_right) &&
+    if ((KEYB_DOWN(dpad_right) && (ticks & 0x7) == 0) &&
         !pieceblocked(piece, piece_x + 1, piece_y)) {
       piece_x++;
     }
@@ -379,6 +380,30 @@ int main(void) {
           playfield_clear(pf);
         } else {
           piece2grid(pf, piece, piece_id, piece_x, piece_y);
+          {
+            int eliminated_rows = 0;
+            int row_out = GRID_Y - 1;
+            for (int row_in = GRID_Y - 1; row_in >= 0; row_in--) {
+              int full_row = 1;
+              for (int i = 0; i < GRID_X; i++) {
+                if (!grid[i][row_in]) {
+                  full_row = 0;
+                }
+              }
+              if (full_row) {
+                eliminated_rows = 1;
+              } else {
+                for (int i = 0; i < GRID_X; i++) {
+                  grid[i][row_out] = grid[i][row_in];
+                }
+                row_out--;
+              }
+            }
+            if (eliminated_rows) {
+              playfield_clear(pf);
+              grid2playfield(pf);
+            }
+          }
         }
         // Start new piece
         piece2 = pieces[cntr++ % 7];
@@ -388,7 +413,7 @@ int main(void) {
       } else {
         piece_y++;
       }
-      wait_tick_drop = ticks + 15;
+      wait_tick_drop = ticks + (KEYB_DOWN(dpad_down) ? 4 : 15);
     }
   }
 
