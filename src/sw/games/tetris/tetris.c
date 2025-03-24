@@ -154,6 +154,23 @@ void playfield_clear(struct PlayField *pf) {
     pf->p2[i] = 0;
     pf->p3[i] = 0;
   }
+
+  for (int gx = 0; gx < GRID_X; gx++) {
+    for (int y = 0; y < GRID_Y * TILE_SIZE; y++) {
+      set_pixel(pf->p2, gx * TILE_SIZE + 0, y);
+      set_pixel(pf->p2, gx * TILE_SIZE + 9, y);
+      set_pixel(pf->p3, gx * TILE_SIZE + 0, y);
+      set_pixel(pf->p3, gx * TILE_SIZE + 9, y);
+    }
+  }
+  for (int gy = 0; gy < GRID_Y; gy++) {
+    for (int x = 0; x < GRID_X * TILE_SIZE; x++) {
+      set_pixel(pf->p2, x, gy * TILE_SIZE + 0);
+      set_pixel(pf->p2, x, gy * TILE_SIZE + 9);
+      set_pixel(pf->p3, x, gy * TILE_SIZE + 0);
+      set_pixel(pf->p3, x, gy * TILE_SIZE + 9);
+    }
+  }
 }
 
 void grid2playfield(struct PlayField *pf) {
