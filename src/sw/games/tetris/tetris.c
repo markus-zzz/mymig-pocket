@@ -75,6 +75,11 @@ struct PlayField {
   volatile uint16_t *p3;
 };
 
+struct GridPlayField {
+  volatile uint16_t *p1;
+  volatile uint16_t *p2;
+};
+
 struct Coord {
   unsigned int x : 4;
   unsigned int y : 4;
@@ -154,21 +159,26 @@ void playfield_clear(struct PlayField *pf) {
     pf->p2[i] = 0;
     pf->p3[i] = 0;
   }
+}
+
+void grid_playfield_init(struct GridPlayField *pf) {
+  pf->p1 = chipmem_alloc(PF_DIM_X * PF_DIM_Y / 16);
+  pf->p2 = chipmem_alloc(PF_DIM_X * PF_DIM_Y / 16);
+  for (int i = 0; i < PF_DIM_X * PF_DIM_Y / 16; i++) {
+    pf->p1[i] = 0;
+    pf->p2[i] = 0;
+  }
 
   for (int gx = 0; gx < GRID_X; gx++) {
     for (int y = 0; y < GRID_Y * TILE_SIZE; y++) {
-      set_pixel(pf->p2, gx * TILE_SIZE + 0, y);
-      set_pixel(pf->p2, gx * TILE_SIZE + 9, y);
-      set_pixel(pf->p3, gx * TILE_SIZE + 0, y);
-      set_pixel(pf->p3, gx * TILE_SIZE + 9, y);
+      set_pixel(pf->p1, gx * TILE_SIZE + 0, y);
+      set_pixel(pf->p1, gx * TILE_SIZE + 9, y);
     }
   }
   for (int gy = 0; gy < GRID_Y; gy++) {
     for (int x = 0; x < GRID_X * TILE_SIZE; x++) {
-      set_pixel(pf->p2, x, gy * TILE_SIZE + 0);
-      set_pixel(pf->p2, x, gy * TILE_SIZE + 9);
-      set_pixel(pf->p3, x, gy * TILE_SIZE + 0);
-      set_pixel(pf->p3, x, gy * TILE_SIZE + 9);
+      set_pixel(pf->p1, x, gy * TILE_SIZE + 0);
+      set_pixel(pf->p1, x, gy * TILE_SIZE + 9);
     }
   }
 }
@@ -247,13 +257,18 @@ void piece2grid(struct PlayField *pf, struct Coord *piece, uint16_t piece_id,
   }
 }
 
-void setup_copper_list(uint16_t *q, struct PlayField *pf) {
+void setup_copper_list(uint16_t *q, struct PlayField *pf, struct GridPlayField *grid_pf) {
   COP_MOVE(q, .reg = BPL1PTH, .data = 0x0);
   COP_MOVE(q, .reg = BPL1PTL, .data = ((uint16_t)pf->p1) >> 1);
-  COP_MOVE(q, .reg = BPL2PTH, .data = 0x0);
-  COP_MOVE(q, .reg = BPL2PTL, .data = ((uint16_t)pf->p2) >> 1);
   COP_MOVE(q, .reg = BPL3PTH, .data = 0x0);
-  COP_MOVE(q, .reg = BPL3PTL, .data = ((uint16_t)pf->p3) >> 1);
+  COP_MOVE(q, .reg = BPL3PTL, .data = ((uint16_t)pf->p2) >> 1);
+  COP_MOVE(q, .reg = BPL5PTH, .data = 0x0);
+  COP_MOVE(q, .reg = BPL5PTL, .data = ((uint16_t)pf->p3) >> 1);
+
+  COP_MOVE(q, .reg = BPL2PTH, .data = 0x0);
+  COP_MOVE(q, .reg = BPL2PTL, .data = ((uint16_t)grid_pf->p1) >> 1);
+  COP_MOVE(q, .reg = BPL4PTH, .data = 0x0);
+  COP_MOVE(q, .reg = BPL4PTL, .data = ((uint16_t)grid_pf->p2) >> 1);
 
   COP_MOVE(q, .reg = SPR0PTH, .data = 0x0);
   COP_MOVE(q, .reg = SPR0PTL, .data = ((uint16_t)sprite_tiles[0]) >> 1);
@@ -302,9 +317,13 @@ void piece2sprites(struct PlayField *pf, struct Coord *piece, int x0, int y0) {
 int main(void) {
 
   struct PlayField pf1;
+  struct GridPlayField grid_pf;
 
+  grid_playfield_init(&grid_pf);
   playfield_alloc(&pf1);
   playfield_clear(&pf1);
+
+
 
   *CHIP_REG(COLOR01) = 0x289; // 001 - Normal
   *CHIP_REG(COLOR02) = 0x3ff;
@@ -313,6 +332,8 @@ int main(void) {
   *CHIP_REG(COLOR05) = 0x145; // 101 - Dark shade
   *CHIP_REG(COLOR06) = 0xfff;
   *CHIP_REG(COLOR07) = 0x289; // 111 - Middle shade
+
+  *CHIP_REG(COLOR09) = 0x333; // Grid
 
   *CHIP_REG(COLOR17) = 0xf00;
   *CHIP_REG(COLOR18) = 0x0f0;
@@ -328,14 +349,14 @@ int main(void) {
     sprite_tile_init(sprite_tiles[i]);
   }
 
-  setup_copper_list(cl1, &pf1);
+  setup_copper_list(cl1, &pf1, &grid_pf);
 
   *CHIP_REG(COP1LCH) = 0;
   *CHIP_REG(COP1LCL) = ((uint16_t)cl1) >> 1;
 
   *CHIP_REG(COPJMP1) = 0;
 
-  *CHIP_REG(BPLCON0) = 3 << 12;
+  *CHIP_REG(BPLCON0) = 5 << 12;
 
   uint8_t diw_x_start = 0xf0 & 208;
   uint8_t diw_x_stop = diw_x_start + PF_DIM_X;
@@ -362,7 +383,6 @@ int main(void) {
   uint8_t piece_rot = 0;
   uint32_t wait_tick_drop = ticks;
   struct Coord(*piece2)[4][4] = pieces[0];
-  unsigned cntr = 1;
 
   while (1) {
     cont1_key_p = cont1_key;
@@ -423,7 +443,7 @@ int main(void) {
           }
         }
         // Start new piece
-        piece2 = pieces[cntr++ % 7];
+        piece2 = pieces[(ticks >> 4) % 7];
         piece_id++;
         piece_x = 2;
         piece_y = 0;

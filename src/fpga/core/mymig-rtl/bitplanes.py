@@ -53,10 +53,25 @@ class Bitplanes(Elaboratable):
         bplshift.eq(Cat(C(0,1), bplshift[0:15])),
       ]
 
+    single_pf_color = Signal(5)
+    dual_pf_color_1 = Signal(3)
+    dual_pf_color_2 = Signal(3)
+
     for idx, bplshift in enumerate(bplxshift_array[0:5]):
       m.d.comb += [
-        self.o_color[idx].eq(bplshift[15]),
+        single_pf_color[idx].eq(bplshift[15]),
       ]
+
+    for idx, bplshift in enumerate(bplxshift_array[0:5]):
+      if idx % 2 == 0: # Odd (BPL1, BPL3, BPL5)
+        m.d.comb += dual_pf_color_1[int(idx/2)].eq(bplshift[15])
+      else: # Even (BPL2, BPL4, BLP6)
+        m.d.comb += dual_pf_color_2[int(idx/2)].eq(bplshift[15])
+
+    with m.If(dual_pf_color_1 == 0):
+      m.d.comb += self.o_color.eq(Cat(dual_pf_color_2, C(1, 1)))
+    with m.Else():
+      m.d.comb += self.o_color.eq(dual_pf_color_1)
 
     # Generate address decode logic for writes
     for idx, bpldat in enumerate(bplxdat_array):
